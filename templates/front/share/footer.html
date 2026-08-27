@@ -158,43 +158,23 @@
     <button id="backToTop" class="btn btn-success rounded-circle">
         <i class="bi bi-arrow-up"></i>
     </button>
-    <!-- <script> -->
-
-    window.addEventListener('load', () => {
-
-    Swal.fire({
-    icon: 'success',
-    title: 'Welcome',
-    text: 'Enjoy shopping at COMPUTER STORE',
-    timer: 1800,
-    showConfirmButton: false
-    });
-
-    });
-    const btn =
-    document.getElementById('backToTop');
-
-    window.addEventListener('scroll', () => {
-
-    if (window.scrollY > 300) {
-
-    btn.style.display = 'block';
-
-    } else {
-
-    btn.style.display = 'none';
+    <script>
+    const btn = document.getElementById('backToTop');
+    if (btn) {
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 300) {
+          btn.style.display = 'block';
+        } else {
+          btn.style.display = 'none';
+        }
+      });
+      btn.addEventListener('click', () => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      });
     }
-    });
-
-    btn.addEventListener('click', () => {
-
-    window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
-    });
-
-    });
-
     </script>
 </footer>
 

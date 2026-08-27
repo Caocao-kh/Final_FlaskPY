@@ -62,9 +62,9 @@
                         {% endif %}
                     </a>
 
-                    <div class="d-flex gap-2">
+                    <div class="d-flex align-items-center gap-2">
                         {# Checks if user is NOT logged in #}
-                        {% if not session.get('user') %}
+                        {% if not session.get('user_id') and not session.get('user') %}
                             <a href="{{ url_for('login') }}"
                                class="btn btn-outline-light btn-auth px-3 py-2">
                                 Login
@@ -74,9 +74,19 @@
                             </a>
                         {% else %}
                             {# Displays if the user IS logged in #}
+                            {% if session.get('user_role') == 'Admin' %}
+                                <a href="{{ url_for('admin_dashboard') }}"
+                                   class="btn btn-warning btn-auth px-3 py-2 d-inline-flex align-items-center gap-1 text-dark fw-bold">
+                                    <i class="bi bi-shield-lock-fill"></i> Admin Console
+                                </a>
+                            {% endif %}
                             <a href="{{ url_for('account') }}"
                                class="btn btn-outline-light btn-auth px-3 py-2">
-                                My Account
+                                {{ session.get('user_name', 'My Account') }}
+                            </a>
+                            <a href="{{ url_for('logout') }}"
+                               class="btn btn-outline-danger btn-auth px-2 py-2" title="Log Out">
+                                <i class="bi bi-box-arrow-right"></i>
                             </a>
                         {% endif %}
                     </div>

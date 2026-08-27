@@ -4,150 +4,497 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Contact Us</title>
+  <title>Contact Us - Superman Electronics</title>
+
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Dynamic Flask Asset Routing Hook -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='front/style.css') }}">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- Storefront Layout CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='front/navber.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='front/footer.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='front/styles.css') }}">
+  <!-- Dedicated Modern Contact Page CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='front/contact.css') }}">
 </head>
 
-<body class="bg-soft">
+<body class="contact-page-body">
 
   {% include 'front/share/navbar.html' %}
 
   <main>
-
-    <!-- Main Workspace Section -->
-    <section class="container py-5">
-      <div class="row g-5">
-
-        <!-- Column 1: Info Directory -->
-        <aside class="col-lg-4 order-lg-last">
-          <div class="d-flex flex-column gap-4">
-
-            <!-- Card Block: Direct Operations Info -->
-            <div class="filter-panel p-4 border rounded-3 bg-body-tertiary shadow-sm">
-              <h2 class="h5 fw-bold text-body mb-3">Support Desks</h2>
-
-              <div class="mb-3">
-                <p class="eyebrow text-muted mb-1">General & Orders</p>
-                <a href="mailto:[EMAIL_ADDRESS]" class="link-teal fw-semibold">[EMAIL_ADDRESS]</a>
-              </div>
-
-              <div class="mb-3">
-                <p class="eyebrow text-muted mb-1">Corporate Hotline</p>
-                <p class="text-body fw-semibold mb-0">+234 704 777 1345</p>
-              </div>
-
-              <div>
-                <p class="eyebrow text-muted mb-1">Operating Hours</p>
-                <p class="text-body small mb-0">Monday – Friday<br>9:00 AM – 6:00 PM EST</p>
-              </div>
-            </div>
-
-            <!-- Card Block: Retail Pickups Notice -->
-            <div class="filter-panel p-4 border rounded-3 bg-body-tertiary shadow-sm">
-              <h2 class="h5 fw-bold text-body mb-2">HQ Logistics Hub</h2>
-              <p class="text-muted small mb-3">Online order collections and authorized warranty drops only.</p>
-              <p class="text-body small mb-0">
-                100 Innovation Way, Suite 400<br>
-                Tech District<br>
-                Boston, MA 02110
-              </p>
-            </div>
-
-          </div>
-        </aside>
-
-        <!-- Column 2: Structural Submission Form -->
-        <div class="col-lg-8">
-          <div class="filter-panel p-4 p-md-5 border rounded-3 bg-body-tertiary shadow-sm">
-            <h2 class="h3 fw-bold text-body mb-2">Send an inquiry</h2>
-            <p class="text-muted small mb-4">Fields marked with an asterisk (*) are required. Our target reply threshold
-              is under 24 business hours.</p>
-
-            <form action="/contact" method="POST" class="needs-validation" novalidate>
-              <div class="row g-3">
-
-                <!-- Input: Full Name -->
-                <div class="col-md-6">
-                  <label for="contactName" class="form-label fw-semibold text-body small">Full Name *</label>
-                  <input type="text" class="form-input-custom form-control" id="contactName" name="name" required
-                    placeholder="John Doe">
-                  <div class="invalid-feedback">Please enter your name.</div>
-                </div>
-
-                <!-- Input: Email Address -->
-                <div class="col-md-6">
-                  <label for="contactEmail" class="form-label fw-semibold text-body small">Email Address *</label>
-                  <input type="email" class="form-input-custom form-control" id="contactEmail" name="email" required
-                    placeholder="johndoe@example.com">
-                  <div class="invalid-feedback">Please provide a valid email structure.</div>
-                </div>
-
-                <!-- Input: Order ID context (Optional Reference) -->
-                <div class="col-md-12">
-                  <label for="contactOrder" class="form-label fw-semibold text-body small">Order Reference Number <span
-                      class="text-muted">(Optional)</span></label>
-                  <input type="text" class="form-input-custom form-control" id="contactOrder" name="order_ref"
-                    placeholder="#VE-10928">
-                </div>
-
-                <!-- Dropdown: Topic Context Classifier -->
-                <div class="col-md-12">
-                  <label for="contactSubject" class="form-label fw-semibold text-body small">Inquiry Subject *</label>
-                  <select class="form-select form-input-custom" id="contactSubject" name="subject" required>
-                    <option value="" selected disabled>Select an option...</option>
-                    <option value="order">Order Status & Delivery tracking</option>
-                    <option value="tech">Product Technical Assistance</option>
-                    <option value="warranty">Warranty, Returns & Damages</option>
-                    <option value="business">Corporate / B2B Wholesales</option>
-                  </select>
-                  <div class="invalid-feedback">Please select a topic framework.</div>
-                </div>
-
-                <!-- Textarea: Message Core Data -->
-                <div class="col-md-12">
-                  <label for="contactMessage" class="form-label fw-semibold text-body small">Message Details *</label>
-                  <textarea class="form-input-custom form-control" id="contactMessage" name="message" rows="5" required
-                    placeholder="Describe your query here..."></textarea>
-                  <div class="invalid-feedback">Please compose your detailed message.</div>
-                </div>
-
-                <!-- Interactive Processing Switch Button -->
-                <div class="col-md-12 pt-2">
-                  <button type="submit" class="btn btn-teal px-4 py-2 fw-bold">Submit Ticket</button>
-                </div>
-
-              </div>
-            </form>
-
-          </div>
+    <!-- ====================================================================
+         HERO SECTION
+         ==================================================================== -->
+    <section class="contact-hero-section">
+      <div class="container">
+        <div class="contact-hero-badge">
+          <i class="bi bi-headset text-warning"></i>
+          <span>24/7 Dedicated Support</span>
         </div>
 
+        <h1 class="contact-hero-title">
+          Get in Touch With Our <span class="text-highlight">Specialists</span>
+        </h1>
+
+        <p class="contact-hero-subtitle">
+          Have questions about our electronic products, order status, or looking for corporate wholesale solutions? Our team is always ready to assist you.
+        </p>
       </div>
     </section>
+
+    <!-- ====================================================================
+         QUICK CONTACT CHANNELS (4 CARDS)
+         ==================================================================== -->
+    <section class="contact-channels-wrapper">
+      <div class="container">
+        <div class="row g-4">
+
+          <!-- Channel 1: Live Chat -->
+          <div class="col-sm-6 col-lg-3">
+            <div class="contact-channel-card">
+              <div class="channel-icon-wrap icon-teal">
+                <i class="bi bi-chat-dots-fill"></i>
+              </div>
+              <h3 class="channel-card-title">Live Chat</h3>
+              <p class="channel-card-desc">Chat directly with our product specialists in real-time.</p>
+              <a href="#inquiryForm" class="channel-card-link" id="btnScrollToForm">
+                <span>Start Conversation</span>
+                <i class="bi bi-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Channel 2: Phone Hotline -->
+          <div class="col-sm-6 col-lg-3">
+            <div class="contact-channel-card">
+              <div class="channel-icon-wrap icon-amber">
+                <i class="bi bi-telephone-fill"></i>
+              </div>
+              <h3 class="channel-card-title">Phone Hotline</h3>
+              <p class="channel-card-desc">Call our customer helpline for urgent questions &amp; orders.</p>
+              <a href="tel:+18005550199" class="channel-card-link">
+                <span>+1 (800) 555-0199</span>
+                <i class="bi bi-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Channel 3: Email Support -->
+          <div class="col-sm-6 col-lg-3">
+            <div class="contact-channel-card">
+              <div class="channel-icon-wrap icon-blue">
+                <i class="bi bi-envelope-check-fill"></i>
+              </div>
+              <h3 class="channel-card-title">Email Inquiries</h3>
+              <p class="channel-card-desc">Send us your detailed inquiries and receive replies under 4 hrs.</p>
+              <a href="mailto:support@supermanstore.com" class="channel-card-link">
+                <span>support@supermanstore.com</span>
+                <i class="bi bi-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Channel 4: HQ Showroom -->
+          <div class="col-sm-6 col-lg-3">
+            <div class="contact-channel-card">
+              <div class="channel-icon-wrap icon-purple">
+                <i class="bi bi-geo-alt-fill"></i>
+              </div>
+              <h3 class="channel-card-title">HQ Showroom</h3>
+              <p class="channel-card-desc">Visit our experience center for test drives and pickups.</p>
+              <a href="#hqLocation" class="channel-card-link">
+                <span>Find Location</span>
+                <i class="bi bi-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         MAIN CONTACT FORM & OPERATIONS SIDEBAR
+         ==================================================================== -->
+    <section class="contact-main-section" id="inquiryForm">
+      <div class="container">
+        <div class="row g-4 g-lg-5">
+
+          <!-- Left: Contact Form -->
+          <div class="col-lg-7">
+            <div class="contact-form-card">
+              
+              {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                  {% for category, message in messages %}
+                    <div class="contact-success-alert mb-4">
+                      <i class="bi bi-check-circle-fill contact-success-icon"></i>
+                      <div>
+                        <h4 class="h6 fw-bold text-success mb-1">Message Sent Successfully!</h4>
+                        <p class="mb-0 text-secondary small">{{ message }}</p>
+                      </div>
+                    </div>
+                  {% endfor %}
+                {% endif %}
+              {% endwith %}
+
+              <div class="form-header-badge">Online Helpdesk</div>
+              <h2 class="form-header-title">Send us an inquiry</h2>
+              <p class="form-header-desc">
+                Fill out the form below and one of our dedicated customer support advisors will reach out to you within 24 business hours.
+              </p>
+
+              <!-- Topic Pills Selection -->
+              <span class="topic-pills-label">Select Inquiry Topic:</span>
+              <div class="topic-pills-group" id="topicPillsGroup">
+                <div class="topic-pill active" data-value="order">📦 Order Status &amp; Tracking</div>
+                <div class="topic-pill" data-value="tech">💻 Technical Assistance</div>
+                <div class="topic-pill" data-value="warranty">🛡️ Warranty &amp; Returns</div>
+                <div class="topic-pill" data-value="business">🏢 B2B &amp; Wholesale</div>
+                <div class="topic-pill" data-value="general">💬 General Question</div>
+              </div>
+
+              <!-- Form Element -->
+              <form action="{{ url_for('contact') }}" method="POST" class="needs-validation" id="contactForm" novalidate>
+                <div class="row g-3">
+
+                  <!-- Full Name -->
+                  <div class="col-md-6">
+                    <label for="contactName" class="contact-label">Full Name <span class="text-danger">*</span></label>
+                    <input 
+                      type="text" 
+                      class="contact-input" 
+                      id="contactName" 
+                      name="name" 
+                      placeholder="e.g. Alex Morgan" 
+                      required
+                    >
+                    <div class="invalid-feedback">Please enter your name.</div>
+                  </div>
+
+                  <!-- Email Address -->
+                  <div class="col-md-6">
+                    <label for="contactEmail" class="contact-label">Email Address <span class="text-danger">*</span></label>
+                    <input 
+                      type="email" 
+                      class="contact-input" 
+                      id="contactEmail" 
+                      name="email" 
+                      placeholder="alex.morgan@example.com" 
+                      required
+                    >
+                    <div class="invalid-feedback">Please provide a valid email address.</div>
+                  </div>
+
+                  <!-- Order Reference -->
+                  <div class="col-md-12">
+                    <label for="contactOrder" class="contact-label">Order Reference Number <span class="text-muted small fw-normal">(Optional)</span></label>
+                    <input 
+                      type="text" 
+                      class="contact-input" 
+                      id="contactOrder" 
+                      name="order_ref" 
+                      placeholder="#1001 or invoice number"
+                    >
+                  </div>
+
+                  <!-- Subject Select -->
+                  <div class="col-md-12">
+                    <label for="contactSubject" class="contact-label">Inquiry Subject <span class="text-danger">*</span></label>
+                    <select class="contact-select" id="contactSubject" name="subject" required>
+                      <option value="Order Status & Tracking" selected>Order Status &amp; Tracking</option>
+                      <option value="Technical Assistance">Technical Assistance</option>
+                      <option value="Warranty & Returns">Warranty, Returns &amp; Replacement</option>
+                      <option value="B2B & Wholesale">Corporate / B2B Wholesales</option>
+                      <option value="General Question">General Inquiries &amp; Feedback</option>
+                    </select>
+                    <div class="invalid-feedback">Please select a subject.</div>
+                  </div>
+
+                  <!-- Message -->
+                  <div class="col-md-12">
+                    <label for="contactMessage" class="contact-label">Message Details <span class="text-danger">*</span></label>
+                    <textarea 
+                      class="contact-textarea" 
+                      id="contactMessage" 
+                      name="message" 
+                      rows="5" 
+                      required 
+                      placeholder="Please write the details of your inquiry, including any relevant product names or issues..."
+                    ></textarea>
+                    <div class="invalid-feedback">Please enter your message.</div>
+                  </div>
+
+                  <!-- Submit Button -->
+                  <div class="col-md-12 pt-2">
+                    <button type="submit" class="btn-contact-submit" id="btnSubmitContact">
+                      <i class="bi bi-send-fill"></i>
+                      <span>Submit Inquiry Ticket</span>
+                    </button>
+                  </div>
+
+                </div>
+              </form>
+
+            </div>
+          </div>
+
+          <!-- Right: Operations Sidebar -->
+          <div class="col-lg-5">
+            <div class="d-flex flex-column gap-4">
+
+              <!-- Status & Hours Card -->
+              <div class="contact-sidebar-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h3 class="sidebar-card-title mb-0">
+                    <i class="bi bi-clock-history text-teal"></i>
+                    <span>Operating Hours</span>
+                  </h3>
+                  <span class="status-pill-live">
+                    <span class="live-pulse-dot"></span>
+                    <span>Live Now</span>
+                  </span>
+                </div>
+
+                <p class="text-muted small mb-3">Our customer support agents are actively answering inquiries during normal operating hours.</p>
+
+                <div class="hours-list">
+                  <div class="hours-row">
+                    <span class="hours-label">Monday – Friday</span>
+                    <span class="hours-val">8:30 AM – 7:00 PM EST</span>
+                  </div>
+                  <div class="hours-row">
+                    <span class="hours-label">Saturday</span>
+                    <span class="hours-val">9:00 AM – 5:00 PM EST</span>
+                  </div>
+                  <div class="hours-row">
+                    <span class="hours-label">Sunday</span>
+                    <span class="hours-val">10:00 AM – 3:00 PM EST</span>
+                  </div>
+                  <div class="hours-row">
+                    <span class="hours-label">Automated System</span>
+                    <span class="hours-val text-success">24/7 Active</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Location & HQ Hub -->
+              <div class="contact-sidebar-card" id="hqLocation">
+                <h3 class="sidebar-card-title">
+                  <i class="bi bi-building-check text-teal"></i>
+                  <span>HQ Logistics &amp; Showroom</span>
+                </h3>
+                <p class="text-muted small mb-3">Order pickups, authorized warranty inspections, and product demonstrations.</p>
+                
+                <div class="hq-address-box mb-3">
+                  <strong>Superman Electronics Global HQ</strong><br>
+                  100 Innovation Way, Suite 400<br>
+                  Tech Innovation District<br>
+                  Boston, MA 02110, United States
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+                  <span class="small text-muted">Parking Available: On-site</span>
+                  <a href="https://maps.google.com" target="_blank" rel="noopener" class="link-teal fw-semibold small text-decoration-none">
+                    <i class="bi bi-map me-1"></i> Open in Maps
+                  </a>
+                </div>
+              </div>
+
+              <!-- Direct Escalation Contacts -->
+              <div class="contact-sidebar-card">
+                <h3 class="sidebar-card-title">
+                  <i class="bi bi-shield-lock-fill text-teal"></i>
+                  <span>Direct Escalations</span>
+                </h3>
+                
+                <div class="mb-3">
+                  <div class="text-muted small text-uppercase fw-bold">Corporate &amp; B2B Partner Desk</div>
+                  <a href="mailto:corporate@supermanstore.com" class="link-teal fw-semibold text-decoration-none">corporate@supermanstore.com</a>
+                </div>
+
+                <div class="mb-3">
+                  <div class="text-muted small text-uppercase fw-bold">Warranty &amp; Service Depot</div>
+                  <a href="mailto:returns@supermanstore.com" class="link-teal fw-semibold text-decoration-none">returns@supermanstore.com</a>
+                </div>
+
+                <div class="pt-2 border-top">
+                  <span class="small text-muted d-block mb-2">Connect on Social Channels:</span>
+                  <div class="social-links-grid">
+                    <a href="#" class="social-circle-btn" title="Twitter / X"><i class="bi bi-twitter-x"></i></a>
+                    <a href="#" class="social-circle-btn" title="Facebook"><i class="bi bi-facebook"></i></a>
+                    <a href="#" class="social-circle-btn" title="Instagram"><i class="bi bi-instagram"></i></a>
+                    <a href="#" class="social-circle-btn" title="LinkedIn"><i class="bi bi-linkedin"></i></a>
+                    <a href="#" class="social-circle-btn" title="YouTube"><i class="bi bi-youtube"></i></a>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         FREQUENTLY ASKED QUESTIONS (FAQ ACCORDION)
+         ==================================================================== -->
+    <section class="contact-faq-section">
+      <div class="container">
+        <div class="faq-header">
+          <span class="faq-badge">Need Quick Answers?</span>
+          <h2 class="faq-title">Frequently Asked Questions</h2>
+          <p class="faq-subtitle">Explore solutions to our most common customer inquiries before reaching out.</p>
+        </div>
+
+        <div class="row justify-content-center">
+          <div class="col-lg-9">
+            <div class="accordion custom-faq-accordion" id="contactFaqAccordion">
+
+              <!-- FAQ Item 1 -->
+              <div class="accordion-item">
+                <h3 class="accordion-header" id="faqHeadingOne">
+                  <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseOne" aria-expanded="true" aria-controls="faqCollapseOne">
+                    How can I track my recent order?
+                  </button>
+                </h3>
+                <div id="faqCollapseOne" class="accordion-collapse collapse show" aria-labelledby="faqHeadingOne" data-bs-parent="#contactFaqAccordion">
+                  <div class="accordion-body">
+                    Once your order is processed and shipped, you will receive a tracking link via email. You can also view active orders and statuses in real time in your account dashboard.
+                  </div>
+                </div>
+              </div>
+
+              <!-- FAQ Item 2 -->
+              <div class="accordion-item">
+                <h3 class="accordion-header" id="faqHeadingTwo">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseTwo" aria-expanded="false" aria-controls="faqCollapseTwo">
+                    What is your return &amp; refund policy?
+                  </button>
+                </h3>
+                <div id="faqCollapseTwo" class="accordion-collapse collapse" aria-labelledby="faqHeadingTwo" data-bs-parent="#contactFaqAccordion">
+                  <div class="accordion-body">
+                    We offer a 30-day hassle-free return window for items in original condition with packaging. Refunds are credited back to your original payment method within 3 to 5 business days after inspection.
+                  </div>
+                </div>
+              </div>
+
+              <!-- FAQ Item 3 -->
+              <div class="accordion-item">
+                <h3 class="accordion-header" id="faqHeadingThree">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseThree" aria-expanded="false" aria-controls="faqCollapseThree">
+                    Do your electronic products come with a warranty?
+                  </button>
+                </h3>
+                <div id="faqCollapseThree" class="accordion-collapse collapse" aria-labelledby="faqHeadingThree" data-bs-parent="#contactFaqAccordion">
+                  <div class="accordion-body">
+                    All products sold on Superman Electronics include an official 1-year manufacturer warranty covering hardware defects, along with optional extended warranty plans at checkout.
+                  </div>
+                </div>
+              </div>
+
+              <!-- FAQ Item 4 -->
+              <div class="accordion-item">
+                <h3 class="accordion-header" id="faqHeadingFour">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapseFour" aria-expanded="false" aria-controls="faqCollapseFour">
+                    Do you ship internationally?
+                  </button>
+                </h3>
+                <div id="faqCollapseFour" class="accordion-collapse collapse" aria-labelledby="faqHeadingFour" data-bs-parent="#contactFaqAccordion">
+                  <div class="accordion-body">
+                    Yes! We provide express and standard international shipping to over 80 countries worldwide. International shipping options and estimated transit times are calculated at checkout.
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
+  {% include 'front/share/footer.html' %}
 
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Interactive Contact Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Topic pills interaction
+      const topicPills = document.querySelectorAll('.topic-pill');
+      const subjectSelect = document.getElementById('contactSubject');
+      const btnScrollToForm = document.getElementById('btnScrollToForm');
+
+      const pillMap = {
+        'order': 'Order Status & Tracking',
+        'tech': 'Technical Assistance',
+        'warranty': 'Warranty & Returns',
+        'business': 'B2B & Wholesale',
+        'general': 'General Question'
+      };
+
+      topicPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          topicPills.forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+
+          const val = pill.getAttribute('data-value');
+          if (subjectSelect && pillMap[val]) {
+            subjectSelect.value = pillMap[val];
+          }
+        });
+      });
+
+      if (subjectSelect) {
+        subjectSelect.addEventListener('change', () => {
+          const selectedText = subjectSelect.value;
+          topicPills.forEach(pill => {
+            const val = pill.getAttribute('data-value');
+            if (pillMap[val] === selectedText) {
+              pill.classList.add('active');
+            } else {
+              pill.classList.remove('active');
+            }
+          });
+        });
+      }
+
+      // Smooth scroll button
+      if (btnScrollToForm) {
+        btnScrollToForm.addEventListener('click', (e) => {
+          e.preventDefault();
+          const target = document.getElementById('inquiryForm');
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const nameInput = document.getElementById('contactName');
+            if (nameInput) setTimeout(() => nameInput.focus(), 500);
+          }
+        });
+      }
+
+      // Form validation
+      const form = document.getElementById('contactForm');
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          form.classList.add('was-validated');
+        });
+      }
+    });
+  </script>
 </body>
-
-{% include 'front/share/footer.html' %}
-
-<!-- Native HTML5 Front-End Validation Script -->
-<script>
-  (() => {
-    'use strict'
-    const forms = document.querySelectorAll('.needs-validation')
-    Array.from(forms).forEach(form => {
-      form.addEventListener('submit', event => {
-        if (!form.checkValidity()) {
-          event.preventDefault()
-          event.stopPropagation()
-        }
-        form.classList.add('was-validated')
-      }, false)
-    })
-  })()
-</script>
-
 </html>

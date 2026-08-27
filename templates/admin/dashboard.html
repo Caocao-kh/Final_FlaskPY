@@ -1,0 +1,302 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Dashboard Overview</h1>
+    <p class="page-subtitle">Welcome back, Admin. Here is what is happening with your store today.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('admin_products') }}" class="btn-primary-admin">
+      <i class="bi bi-plus-lg"></i> Manage Products
+    </a>
+  </div>
+</div>
+
+<!-- 4 Key Metric Cards -->
+<div class="row g-4 mb-4">
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-title">Total Revenue</span>
+        <div class="stat-icon primary">
+          <i class="bi bi-currency-dollar"></i>
+        </div>
+      </div>
+      <div class="stat-value">${{ "%.2f"|format(stats.total_revenue) }}</div>
+      <div class="d-flex align-items-center gap-2 mt-2">
+        <span class="stat-badge up"><i class="bi bi-arrow-up-short"></i>+14.2%</span>
+        <span class="text-muted small">vs last month</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-title">Total Products</span>
+        <div class="stat-icon success">
+          <i class="bi bi-box-seam"></i>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.total_products }}</div>
+      <div class="d-flex align-items-center gap-2 mt-2">
+        <span class="stat-badge up"><i class="bi bi-arrow-up-short"></i>+4 new</span>
+        <span class="text-muted small">in catalog</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-title">Customer Orders</span>
+        <div class="stat-icon warning">
+          <i class="bi bi-bag-check"></i>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.total_orders }}</div>
+      <div class="d-flex align-items-center gap-2 mt-2">
+        <span class="stat-badge up"><i class="bi bi-arrow-up-short"></i>+8.5%</span>
+        <span class="text-muted small">fulfillment rate</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-title">Avg Product Rating</span>
+        <div class="stat-icon purple">
+          <i class="bi bi-star-fill"></i>
+        </div>
+      </div>
+      <div class="stat-value">{{ "%.1f"|format(stats.avg_rating) }} / 5.0</div>
+      <div class="d-flex align-items-center gap-2 mt-2">
+        <span class="stat-badge up"><i class="bi bi-arrow-up-short"></i>High satisfaction</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row g-4 mb-4">
+  <div class="col-12 col-lg-8">
+    <div class="admin-card h-100 mb-0">
+      <div class="admin-card-header">
+        <h5 class="admin-card-title">Revenue & Orders Performance</h5>
+        <span class="text-muted small">Year 2026</span>
+      </div>
+      <div style="height: 300px; position: relative;">
+        <canvas id="salesTrendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="admin-card h-100 mb-0">
+      <div class="admin-card-header">
+        <h5 class="admin-card-title">Category Breakdown</h5>
+        <span class="text-muted small">Product Distribution</span>
+      </div>
+      <div style="height: 300px; position: relative;" class="d-flex align-items-center justify-content-center">
+        <canvas id="categoryDoughnutChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Section: Recent Orders & Top Products -->
+<div class="row g-4">
+  <!-- Recent Orders Table -->
+  <div class="col-12 col-xl-7">
+    <div class="admin-card mb-0">
+      <div class="admin-card-header">
+        <h5 class="admin-card-title">Recent Orders Log</h5>
+        <a href="{{ url_for('admin_orders') }}" class="text-decoration-none small text-info">View All</a>
+      </div>
+      <div class="admin-table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if recent_orders %}
+              {% for order in recent_orders %}
+              <tr>
+                <td><span class="fw-bold text-info">#ORD-{{ order.id }}</span></td>
+                <td>
+                  <div class="fw-semibold">{{ order.customer_name }}</div>
+                  <div class="text-muted small">{{ order.email }}</div>
+                </td>
+                <td class="fw-bold">${{ "%.2f"|format(order.total_amount) }}</td>
+                <td>
+                  {% if order.status == 'Completed' %}
+                    <span class="status-badge completed"><i class="bi bi-check-circle-fill"></i> Completed</span>
+                  {% elif order.status == 'Pending' %}
+                    <span class="status-badge pending"><i class="bi bi-clock-history"></i> Pending</span>
+                  {% else %}
+                    <span class="status-badge processing"><i class="bi bi-gear-wide-connected"></i> Processing</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{{ url_for('admin_orders') }}" class="btn-action edit" title="View Details">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="5" class="text-center py-4 text-muted">
+                  <i class="bi bi-inbox fs-3 d-block mb-1"></i> No recent orders recorded yet.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Rated Products Widget -->
+  <div class="col-12 col-xl-5">
+    <div class="admin-card mb-0">
+      <div class="admin-card-header">
+        <h5 class="admin-card-title">Top Rated Catalog Items</h5>
+        <a href="{{ url_for('admin_products') }}" class="text-decoration-none small text-info">View Catalog</a>
+      </div>
+      <div class="admin-table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Rating</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in top_products %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <img src="{{ item.image }}" class="product-thumb" alt="Product Image">
+                  <span class="text-truncate fw-semibold" style="max-width: 140px;" title="{{ item.title }}">{{ item.title }}</span>
+                </div>
+              </td>
+              <td><span class="badge-category">{{ item.category }}</span></td>
+              <td class="fw-bold">${{ item.price }}</td>
+              <td>
+                <span class="text-warning fw-semibold"><i class="bi bi-star-fill me-1"></i>{{ item.rating.rate if item.rating else 'N/A' }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Chart 1: Revenue & Orders Trend
+  const ctxSales = document.getElementById('salesTrendChart').getContext('2d');
+  new Chart(ctxSales, {
+    type: 'line',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+      datasets: [
+        {
+          label: 'Revenue ($)',
+          data: [2100, 3200, 2800, 4500, 4100, 5600, 6200, 7800],
+          borderColor: '#0ea5e9',
+          backgroundColor: 'rgba(14, 165, 233, 0.15)',
+          fill: true,
+          tension: 0.4,
+          borderWidth: 3,
+          pointRadius: 4,
+          pointBackgroundColor: '#0ea5e9'
+        },
+        {
+          label: 'Orders Count',
+          data: [15, 24, 20, 38, 32, 45, 52, 60],
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99, 102, 241, 0.05)',
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointRadius: 3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: '#334155', font: { family: 'Inter', weight: '600' } }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#f1f5f9' },
+          ticks: { color: '#475569', font: { family: 'Inter' } }
+        },
+        y: {
+          grid: { color: '#f1f5f9' },
+          ticks: { color: '#475569', font: { family: 'Inter' } }
+        }
+      }
+    }
+  });
+
+  // Chart 2: Category Distribution
+  const categoryData = {{ category_counts | tojson }};
+  const labels = Object.keys(categoryData);
+  const counts = Object.values(categoryData);
+
+  const ctxCategory = document.getElementById('categoryDoughnutChart').getContext('2d');
+  new Chart(ctxCategory, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: counts,
+        backgroundColor: [
+          '#0284c7',
+          '#4f46e5',
+          '#16a34a',
+          '#d97706',
+          '#ec4899',
+          '#8b5cf6'
+        ],
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#334155', font: { family: 'Inter', size: 11, weight: '600' }, padding: 15 }
+        }
+      },
+      cutout: '70%'
+    }
+  });
+</script>
+{% endblock %}

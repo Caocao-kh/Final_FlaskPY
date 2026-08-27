@@ -1,0 +1,85 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Customer Orders Log{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Customer Orders</h1>
+    <p class="page-subtitle">Track, fulfill, and monitor store customer purchase requests.</p>
+  </div>
+</div>
+
+<div class="admin-card">
+  <div class="admin-card-header">
+    <h5 class="admin-card-title">Order History & Submissions</h5>
+    <span class="text-muted small">Total: {{ orders|length }} Orders</span>
+  </div>
+
+  <div class="admin-table-responsive">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Order Reference</th>
+          <th>Customer Details</th>
+          <th>Shipping Address</th>
+          <th>Items Ordered</th>
+          <th>Total Amount</th>
+          <th>Date</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if orders %}
+          {% for order in orders %}
+          <tr>
+            <td>
+              <span class="fw-bold text-info">#ORD-{{ order.id }}</span>
+            </td>
+            <td>
+              <div class="fw-semibold text-dark">{{ order.customer_name }}</div>
+              <div class="text-muted small"><i class="bi bi-envelope me-1"></i>{{ order.email }}</div>
+              <div class="text-muted small"><i class="bi bi-telephone me-1"></i>{{ order.phone }}</div>
+            </td>
+            <td>
+              <div class="text-dark small">{{ order.address }}</div>
+              <div class="text-muted small">{{ order.city }}</div>
+            </td>
+            <td>
+              {% set items_list = order['items'] if 'items' in order else [] %}
+              <span class="badge bg-secondary text-white">{{ items_list|length }} item(s)</span>
+              <ul class="list-unstyled mb-0 mt-1 extra-small text-muted" style="font-size: 0.8rem;">
+                {% for item in items_list[:2] %}
+                  <li class="text-truncate" style="max-width: 200px;">• {{ item.title }} (x{{ item.quantity }})</li>
+                {% endfor %}
+                {% if items_list|length > 2 %}
+                  <li class="text-info">+ {{ items_list|length - 2 }} more</li>
+                {% endif %}
+              </ul>
+            </td>
+            <td class="fw-bold text-success">${{ "%.2f"|format(order.total_amount) }}</td>
+            <td class="text-muted small">{{ order.timestamp }}</td>
+            <td>
+              {% if order.status == 'Completed' %}
+                <span class="status-badge completed"><i class="bi bi-check-circle-fill"></i> Completed</span>
+              {% elif order.status == 'Pending' %}
+                <span class="status-badge pending"><i class="bi bi-clock-history"></i> Pending</span>
+              {% else %}
+                <span class="status-badge processing"><i class="bi bi-gear-wide-connected"></i> Processing</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="text-center py-5 text-muted">
+              <i class="bi bi-receipt fs-2 d-block mb-2 text-secondary"></i>
+              No customer orders submitted yet. Orders placed through checkout will be listed here.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

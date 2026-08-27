@@ -4,182 +4,768 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Products</title>
+  <title>Explore Products - Superman Electronics</title>
+
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Fixed static asset routing using Flask's url_for tool -->
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- Core Storefront & Navigation CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='front/navber.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='front/footer.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='front/styles.css') }}">
+  <!-- Dedicated Modern Products Catalog CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='front/products.css') }}">
 </head>
 
-<body class="bg-soft">
+<body class="catalog-body">
 
   {% include 'front/share/navbar.html' %}
 
   <main>
-    <!-- Hero Section -->
-    <section class="catalog-hero text-white">
-      <div class="container py-5">
-        <div class="row align-items-center g-5">
+    <!-- ====================================================================
+         HERO SECTION
+         ==================================================================== -->
+    <section class="catalog-hero-premium">
+      <div class="container">
+        <div class="row align-items-center g-4 g-lg-5">
 
           <div class="col-lg-7">
-
-            <span class="badge bg-warning text-dark px-3 py-2 mb-3">
-              ⚡ Latest Technology
-            </span>
-
-            <h1 class="display-3 fw-bold text-white mb-4">
-              Discover Premium
-              <span class="text-gold">Electronics</span>
-              For Every Lifestyle
-            </h1>
-
-            <p class="lead text-white-50 mb-4">
-              Explore cutting-edge laptops, smartphones, gaming gear,
-              audio devices, and accessories from trusted global brands.
-            </p>
-
-            <div class="d-flex flex-wrap gap-3">
-              <a href="/products" class="btn btn-teal btn-lg">
-                Shop Now
-              </a>
-
-              <a href="#featured-products" class="btn btn-outline-light btn-lg">
-                View Collection
-              </a>
+            <div class="catalog-hero-badge">
+              <i class="bi bi-lightning-charge-fill text-warning"></i>
+              <span>Curated Technology & Lifestyle</span>
             </div>
 
+            <h1 class="catalog-hero-title">
+              Discover Premium <span class="text-highlight">Electronics</span> For Every Lifestyle
+            </h1>
+
+            <p class="catalog-hero-subtitle">
+              Explore our selection of premium laptops, smart audio devices, wearable technology, and lifestyle essentials from trusted global brands.
+            </p>
+
+            <!-- Hero Live Search Input -->
+            <div class="hero-search-wrapper">
+              <i class="bi bi-search search-icon"></i>
+              <input 
+                type="text" 
+                id="heroSearchInput" 
+                class="hero-search-input" 
+                placeholder="Search products by title, category, or keyword..."
+                value="{{ search_query }}"
+                autocomplete="off"
+              >
+              <button type="button" class="btn-hero-search" id="btnHeroSearch" title="Search">
+                <i class="bi bi-search"></i>
+                <span>Search</span>
+              </button>
+            </div>
+
+            <!-- Quick Category Tags in Hero -->
+            <div class="hero-quick-categories">
+              <span class="hero-quick-label">Popular:</span>
+              <button type="button" class="hero-cat-tag {% if not selected_category %}active{% endif %}" data-category="">
+                All
+              </button>
+              {% for cat in categories %}
+              <button type="button" class="hero-cat-tag {% if selected_category == cat|lower %}active{% endif %}" data-category="{{ cat|lower }}">
+                {{ cat|title }}
+              </button>
+              {% endfor %}
+            </div>
           </div>
 
           <div class="col-lg-5">
-
-            <div class="catalog-stats-modern">
-
-              <div class="stat-box">
-                <h2>500+</h2>
-                <span>Products</span>
+            <div class="hero-stats-glass">
+              <div class="hero-stat-item">
+                <div class="hero-stat-icon">
+                  <i class="bi bi-box-seam"></i>
+                </div>
+                <div>
+                  <div class="hero-stat-val">{{ products|length }}+</div>
+                  <div class="hero-stat-lbl">Premium Products</div>
+                </div>
               </div>
 
-              <div class="stat-box">
-                <h2>50+</h2>
-                <span>Brands</span>
+              <div class="hero-stat-item">
+                <div class="hero-stat-icon">
+                  <i class="bi bi-shield-check"></i>
+                </div>
+                <div>
+                  <div class="hero-stat-val">100%</div>
+                  <div class="hero-stat-lbl">Authentic Quality</div>
+                </div>
               </div>
 
-              <div class="stat-box">
-                <h2>4.9★</h2>
-                <span>Customer Rating</span>
+              <div class="hero-stat-item">
+                <div class="hero-stat-icon">
+                  <i class="bi bi-star-fill"></i>
+                </div>
+                <div>
+                  <div class="hero-stat-val">4.9★</div>
+                  <div class="hero-stat-lbl">Customer Rating</div>
+                </div>
               </div>
 
-              <div class="stat-box">
-                <h2>24/7</h2>
-                <span>Support</span>
+              <div class="hero-stat-item">
+                <div class="hero-stat-icon">
+                  <i class="bi bi-truck"></i>
+                </div>
+                <div>
+                  <div class="hero-stat-val">Fast</div>
+                  <div class="hero-stat-lbl">Free Global Shipping</div>
+                </div>
               </div>
-
             </div>
-
           </div>
 
         </div>
       </div>
     </section>
 
-    <!-- Main Content Layout Section -->
-    <section class="container " style="text-align: center;">
-      <div class="filter-header">
-        <div>
-          <small class="text-muted text-uppercase">
-            Product Search
-          </small>
-          <h2>Smart Filters</h2>
-        </div>
+    <!-- ====================================================================
+         MAIN CATALOG SECTION (SIDEBAR + PRODUCTS GRID)
+         ==================================================================== -->
+    <section class="catalog-main-wrapper">
+      <div class="container">
+        <div class="row g-4">
 
-        <a href="/products" class="reset-btn">
-          Reset
-        </a>
-      </div>
-      <!-- Product Listing Grid Column -->
-      <div class="col-lg-9">
-        <!-- Toolbar Widget -->
-        <div class="catalog-toolbar-card mb-3">
-          <div>
-            <p class="eyebrow text-muted mb-1">Featured selection</p>
-            <h2 class="h4 fw-bold mb-0 text-body">8 products found</h2>
-          </div>
-          <div class="d-flex flex-wrap gap-2 align-items-center">
-            <span class="filter-chip">Laptops</span>
-            <span class="filter-chip">Audio</span>
-            <select class="form-select sort-select" aria-label="Sort products">
-              <option>Featured</option>
-              <option>Price: low to high</option>
-              <option>Price: high to low</option>
-            </select>
-          </div>
-        </div>
-        <!-- Products Card Loops -->
-        <div class="row g-4 " style="text-align: center;">
-          {% for p in products %}
-          <div class="col-md-6 col-xl-4">
-            <div class="card product-card catalog-product h-100 border-0 shadow-sm">
-              <div class="product-image-wrap bg-white">
-                <span class="product-badge">Best seller</span>
-                <img src="{{ p.image }}" class="card-img-top object-fit-contain p-3" alt="{{ p.title }}"
-                  style="height: 220px;">
+          <!-- Left Sidebar Filters -->
+          <div class="col-lg-3">
+            <aside class="filter-sidebar">
+              <div class="filter-sidebar-header">
+                <h3 class="filter-sidebar-title">
+                  <i class="bi bi-sliders2 text-teal"></i>
+                  <span>Filters</span>
+                </h3>
+                <button type="button" class="btn-reset-filters" id="btnResetFilters" title="Reset all filters">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </button>
               </div>
-              <div class="card-body d-flex flex-column p-4">
-                <p class="eyebrow text-muted mb-1">{{ p.category }}</p>
-                <!-- Replaced hardcoded text-dark with generic semantic text-body values -->
-                <h3 class="h5 fw-bold text-body text-truncate mb-2" title="{{ p.title }}">{{ p.title }}</h3>
-                <p class="product-description text-muted small text-truncate-2 flex-grow-1 mb-4">{{
-                  p.description }}
-                </p>
-                <div class="d-flex justify-content-between align-items-center mb-3 pt-2 border-top border-light-subtle">
-                  <p class="price mb-0 h5 fw-bold text-teal">${{ p.price }}</p>
-                  <span class="rating-mini text-gold fw-semibold small"> ★ {% if p.rating is mapping %}{{
-                    p.rating.rate }}{% else %}4.5{% endif %} </span>
+
+              <!-- Search in Sidebar -->
+              <div class="filter-group">
+                <div class="filter-group-title">Search</div>
+                <div class="filter-search-box">
+                  <i class="bi bi-search search-icon"></i>
+                  <input type="text" id="sidebarSearchInput" placeholder="Filter title..." value="{{ search_query }}">
+                  <button type="button" class="clear-search-btn" id="btnClearSearch" title="Clear search">
+                    <i class="bi bi-x-circle-fill"></i>
+                  </button>
                 </div>
-                <div class="d-grid gap-2 mt-auto"> <a class="btn btn-outline-secondary" href="/product/{{ p.id }}">
-                    View Details </a>
+              </div>
+
+              <!-- Categories Filter -->
+              <div class="filter-group">
+                <div class="filter-group-title">Categories</div>
+                <div class="category-option-list" id="categoryOptionsList">
+                  <div class="category-option-item {% if not selected_category %}active{% endif %}" data-category="">
+                    <span>All Categories</span>
+                    <span class="cat-count">{{ products|length }}</span>
+                  </div>
+                  {% for cat in categories %}
+                    {% set count = 0 %}
+                    {% for p in products %}
+                      {% if p.category == cat %}{% set count = count + 1 %}{% endif %}
+                    {% endfor %}
+                  <div class="category-option-item {% if selected_category == cat|lower %}active{% endif %}" data-category="{{ cat|lower }}">
+                    <span>{{ cat|title }}</span>
+                    <span class="cat-count">{{ count }}</span>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <!-- Price Filter -->
+              <div class="filter-group">
+                <div class="filter-group-title">
+                  <span>Max Price</span>
+                  <span id="priceDisplayValue" class="text-teal fw-bold">$1,000</span>
+                </div>
+                <div class="price-slider-wrapper">
+                  <input type="range" class="price-slider" id="priceRangeInput" min="0" max="1000" step="10" value="1000">
+                  <div class="price-range-display">
+                    <span>$0</span>
+                    <span>$1,000+</span>
+                  </div>
+                </div>
+                <!-- Price Presets -->
+                <div class="price-presets-grid">
+                  <button type="button" class="btn-price-preset active" data-max="1000">All Prices</button>
+                  <button type="button" class="btn-price-preset" data-max="25">Under $25</button>
+                  <button type="button" class="btn-price-preset" data-max="50">Under $50</button>
+                  <button type="button" class="btn-price-preset" data-max="100">Under $100</button>
+                </div>
+              </div>
+
+              <!-- Rating Filter -->
+              <div class="filter-group">
+                <div class="filter-group-title">Customer Rating</div>
+                <div class="rating-options-list">
+                  <div class="rating-option-item active" data-min-rating="0">
+                    <span>All Ratings</span>
+                    <span class="rating-stars-preview"><i class="bi bi-star-fill text-warning"></i></span>
+                  </div>
+                  <div class="rating-option-item" data-min-rating="4.5">
+                    <span>4.5 &amp; Above</span>
+                    <span class="rating-stars-preview"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-half"></i></span>
+                  </div>
+                  <div class="rating-option-item" data-min-rating="4.0">
+                    <span>4.0 &amp; Above</span>
+                    <span class="rating-stars-preview"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star"></i></span>
+                  </div>
+                  <div class="rating-option-item" data-min-rating="3.0">
+                    <span>3.0 &amp; Above</span>
+                    <span class="rating-stars-preview"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star"></i><i class="bi bi-star"></i></span>
+                  </div>
+                </div>
+              </div>
+
+            </aside>
+          </div>
+
+          <!-- Right Products Catalog Listing -->
+          <div class="col-lg-9">
+
+            <!-- Catalog Toolbar Header -->
+            <div class="catalog-toolbar">
+              <div class="toolbar-info">
+                <h2 class="result-count-badge">
+                  Showing <span id="visibleProductsCount" class="text-teal">{{ products|length }}</span> of {{ products|length }} Products
+                </h2>
+                <div class="active-filter-chips" id="activeFilterChips"></div>
+              </div>
+
+              <div class="toolbar-controls">
+                <!-- Sorting Select -->
+                <div class="sort-select-wrapper">
+                  <span class="sort-label d-none d-sm-inline">Sort by:</span>
+                  <select class="catalog-sort-select" id="catalogSortSelect" aria-label="Sort products">
+                    <option value="featured">Featured Selection</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="rating-desc">Highest Rated</option>
+                    <option value="name-asc">Name: A to Z</option>
+                  </select>
+                </div>
+
+                <!-- View Layout Switcher (Grid / List) -->
+                <div class="view-mode-group" role="group" aria-label="Catalog view mode">
+                  <button type="button" class="btn-view-mode active" id="btnViewGrid" title="Grid View">
+                    <i class="bi bi-grid-fill"></i>
+                  </button>
+                  <button type="button" class="btn-view-mode" id="btnViewList" title="List View">
+                    <i class="bi bi-list-ul"></i>
+                  </button>
                 </div>
               </div>
             </div>
-          </div> {% endfor %}
-        </div>
 
-        <!-- Catalog Pagination Interface -->
-        <nav class="mt-5" aria-label="Product pagination">
-          <ul class="pagination justify-content-center">
-            <li class="page-item disabled"><a class="page-link" href="/products">Previous</a></li>
-            <li class="page-item active"><a class="page-link" href="/products">1</a></li>
-            <li class="page-item"><a class="page-link" href="/products">2</a></li>
-            <li class="page-item"><a class="page-link" href="/products">Next</a></li>
-          </ul>
-        </nav>
-      </div>
+            <!-- Products Grid Container -->
+            <div class="products-catalog-grid" id="productsContainer">
+              {% for p in products %}
+              <article 
+                class="product-modern-card" 
+                data-id="{{ p.id }}"
+                data-title="{{ p.title|lower }}"
+                data-category="{{ p.category|lower }}"
+                data-price="{{ p.price }}"
+                data-rating="{{ p.rating.rate if p.rating and p.rating.rate else 4.5 }}"
+                data-reviews="{{ p.rating.count if p.rating and p.rating.count else 0 }}"
+                data-description="{{ p.description|lower }}"
+              >
+                <!-- Card Media -->
+                <div class="product-card-media">
+                  <span class="card-floating-badge">Featured</span>
+                  <span class="card-category-badge">{{ p.category }}</span>
+                  <a href="{{ url_for('product', product_id=p.id) }}" class="d-flex align-items-center justify-content-center h-100 w-100" title="{{ p.title }}">
+                    <img 
+                      src="{{ p.image }}" 
+                      alt="{{ p.title }}" 
+                      loading="lazy" 
+                      onerror="this.src='https://via.placeholder.com/300x300?text=Product+Image';"
+                    >
+                  </a>
+                </div>
+
+                <!-- Card Body -->
+                <div class="product-card-body">
+                  <div class="product-category-text">{{ p.category }}</div>
+                  
+                  <h3 class="product-card-title" title="{{ p.title }}">
+                    <a href="{{ url_for('product', product_id=p.id) }}">{{ p.title }}</a>
+                  </h3>
+
+                  <p class="product-card-desc">{{ p.description }}</p>
+
+                  <div class="product-rating-row">
+                    <div class="rating-badge-pill">
+                      <i class="bi bi-star-fill"></i>
+                      <span>{{ p.rating.rate if p.rating and p.rating.rate else 4.5 }}</span>
+                    </div>
+                    <span class="rating-reviews-count">({{ p.rating.count if p.rating and p.rating.count else 0 }} reviews)</span>
+                  </div>
+
+                  <!-- Footer: Price & Actions -->
+                  <div class="product-card-footer">
+                    <div class="product-price-box">
+                      <span class="product-price-label">Price</span>
+                      <span class="product-price-amount">${{ "%.2f"|format(p.price) }}</span>
+                    </div>
+
+                    <div class="card-action-buttons">
+                      <a href="{{ url_for('product', product_id=p.id) }}" class="btn-card-details" title="View details">
+                        <i class="bi bi-eye"></i>
+                        <span>Details</span>
+                      </a>
+                      
+                      <form action="{{ url_for('add_to_cart', product_id=p.id) }}" method="POST" class="d-inline add-to-cart-form">
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" class="btn-card-add-cart" title="Add to cart">
+                          <i class="bi bi-cart-plus"></i>
+                          <span>Add</span>
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </article>
+              {% endfor %}
+
+              <!-- Empty State (Shown when no items match filters) -->
+              <div class="catalog-empty-state" id="catalogEmptyState">
+                <div class="catalog-empty-icon">
+                  <i class="bi bi-search"></i>
+                </div>
+                <h3 class="catalog-empty-title">No products found</h3>
+                <p class="catalog-empty-text">
+                  We couldn't find any products matching your selected search terms or filters. Try adjusting your search query or reset your filters.
+                </p>
+                <button type="button" class="btn btn-teal px-4 py-2" id="btnEmptyReset">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i> Reset All Filters
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
       </div>
     </section>
   </main>
 
+  <!-- Instant Add-to-Cart Toast Notification -->
+  <div class="cart-toast" id="cartToast" role="alert" aria-live="assertive" aria-atomic="true">
+    <i class="bi bi-check-circle-fill toast-icon"></i>
+    <div>
+      <div class="fw-bold" id="toastTitle">Product Added!</div>
+      <div class="small text-white-50" id="toastMessage">Item successfully added to your shopping cart.</div>
+    </div>
+  </div>
+
   {% include 'front/share/footer.html' %}
-</body>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
 
-  document.querySelectorAll('.add-cart-btn').forEach(btn => {
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    btn.addEventListener('click', function () {
+  <!-- ====================================================================
+       INTERACTIVE CLIENT-SIDE CATALOG CONTROLLER
+       ==================================================================== -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Elements
+      const heroSearchInput = document.getElementById('heroSearchInput');
+      const sidebarSearchInput = document.getElementById('sidebarSearchInput');
+      const btnClearSearch = document.getElementById('btnClearSearch');
+      const btnHeroSearch = document.getElementById('btnHeroSearch');
+      const categoryOptions = document.querySelectorAll('.category-option-item');
+      const heroCatTags = document.querySelectorAll('.hero-cat-tag');
+      const priceRangeInput = document.getElementById('priceRangeInput');
+      const priceDisplayValue = document.getElementById('priceDisplayValue');
+      const pricePresets = document.querySelectorAll('.btn-price-preset');
+      const ratingOptions = document.querySelectorAll('.rating-option-item');
+      const sortSelect = document.getElementById('catalogSortSelect');
+      const btnViewGrid = document.getElementById('btnViewGrid');
+      const btnViewList = document.getElementById('btnViewList');
+      const productsContainer = document.getElementById('productsContainer');
+      const productCards = Array.from(document.querySelectorAll('.product-modern-card'));
+      const visibleCountEl = document.getElementById('visibleProductsCount');
+      const emptyStateEl = document.getElementById('catalogEmptyState');
+      const btnResetFilters = document.getElementById('btnResetFilters');
+      const btnEmptyReset = document.getElementById('btnEmptyReset');
+      const activeFilterChips = document.getElementById('activeFilterChips');
+      const cartToast = document.getElementById('cartToast');
 
-      let productName = this.dataset.name;
+      // State
+      let filterState = {
+        search: (heroSearchInput?.value || sidebarSearchInput?.value || '').trim().toLowerCase(),
+        category: '{{ selected_category|lower }}' || '',
+        maxPrice: 1000,
+        minRating: 0,
+        sort: 'featured',
+        viewMode: localStorage.getItem('catalog_view_mode') || 'grid'
+      };
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Added to Cart',
-        text: productName + ' added successfully!',
-        timer: 1800,
-        showConfirmButton: false
-      });
+      // Set initial view mode
+      applyViewMode(filterState.viewMode);
 
+      // Initialize filter bindings
+      function initFilters() {
+        // Sync Initial Category
+        if (filterState.category) {
+          updateActiveCategoryUI(filterState.category);
+        }
+
+        // Hero Search
+        if (heroSearchInput) {
+          heroSearchInput.addEventListener('input', (e) => {
+            filterState.search = e.target.value.trim().toLowerCase();
+            if (sidebarSearchInput) sidebarSearchInput.value = e.target.value;
+            toggleClearSearchButton();
+            applyFilters();
+          });
+        }
+
+        // Sidebar Search
+        if (sidebarSearchInput) {
+          sidebarSearchInput.addEventListener('input', (e) => {
+            filterState.search = e.target.value.trim().toLowerCase();
+            if (heroSearchInput) heroSearchInput.value = e.target.value;
+            toggleClearSearchButton();
+            applyFilters();
+          });
+        }
+
+        if (btnClearSearch) {
+          btnClearSearch.addEventListener('click', () => {
+            filterState.search = '';
+            if (heroSearchInput) heroSearchInput.value = '';
+            if (sidebarSearchInput) sidebarSearchInput.value = '';
+            toggleClearSearchButton();
+            applyFilters();
+          });
+        }
+
+        if (btnHeroSearch) {
+          btnHeroSearch.addEventListener('click', () => {
+            const el = document.getElementById('productsContainer');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+        }
+
+        // Category clicks in Sidebar
+        categoryOptions.forEach(opt => {
+          opt.addEventListener('click', () => {
+            const cat = opt.getAttribute('data-category');
+            filterState.category = cat;
+            updateActiveCategoryUI(cat);
+            applyFilters();
+          });
+        });
+
+        // Category clicks in Hero
+        heroCatTags.forEach(tag => {
+          tag.addEventListener('click', () => {
+            const cat = tag.getAttribute('data-category');
+            filterState.category = cat;
+            updateActiveCategoryUI(cat);
+            applyFilters();
+            const el = document.getElementById('productsContainer');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+        });
+
+        // Price slider
+        if (priceRangeInput) {
+          priceRangeInput.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            filterState.maxPrice = val;
+            priceDisplayValue.textContent = val >= 1000 ? '$1,000+' : `$${val.toFixed(0)}`;
+            updatePricePresetsUI(val);
+            applyFilters();
+          });
+        }
+
+        // Price presets
+        pricePresets.forEach(btn => {
+          btn.addEventListener('click', () => {
+            const maxVal = parseFloat(btn.getAttribute('data-max'));
+            filterState.maxPrice = maxVal;
+            if (priceRangeInput) priceRangeInput.value = maxVal;
+            priceDisplayValue.textContent = maxVal >= 1000 ? '$1,000+' : `$${maxVal.toFixed(0)}`;
+            updatePricePresetsUI(maxVal);
+            applyFilters();
+          });
+        });
+
+        // Rating filter
+        ratingOptions.forEach(opt => {
+          opt.addEventListener('click', () => {
+            ratingOptions.forEach(r => r.classList.remove('active'));
+            opt.classList.add('active');
+            filterState.minRating = parseFloat(opt.getAttribute('data-min-rating')) || 0;
+            applyFilters();
+          });
+        });
+
+        // Sort select
+        if (sortSelect) {
+          sortSelect.addEventListener('change', (e) => {
+            filterState.sort = e.target.value;
+            applySorting();
+          });
+        }
+
+        // Layout switches
+        if (btnViewGrid && btnViewList) {
+          btnViewGrid.addEventListener('click', () => applyViewMode('grid'));
+          btnViewList.addEventListener('click', () => applyViewMode('list'));
+        }
+
+        // Reset buttons
+        if (btnResetFilters) btnResetFilters.addEventListener('click', resetAllFilters);
+        if (btnEmptyReset) btnEmptyReset.addEventListener('click', resetAllFilters);
+
+        // Async Add-to-cart toast handler
+        setupAddToCartFeedback();
+
+        // Initial Filter run
+        applyFilters();
+      }
+
+      function updateActiveCategoryUI(cat) {
+        categoryOptions.forEach(opt => {
+          if (opt.getAttribute('data-category') === cat) {
+            opt.classList.add('active');
+          } else {
+            opt.classList.remove('active');
+          }
+        });
+
+        heroCatTags.forEach(tag => {
+          if (tag.getAttribute('data-category') === cat) {
+            tag.classList.add('active');
+          } else {
+            tag.classList.remove('active');
+          }
+        });
+      }
+
+      function updatePricePresetsUI(val) {
+        pricePresets.forEach(btn => {
+          const maxVal = parseFloat(btn.getAttribute('data-max'));
+          if (maxVal === val) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+      }
+
+      function toggleClearSearchButton() {
+        if (!btnClearSearch) return;
+        btnClearSearch.style.display = filterState.search.length > 0 ? 'block' : 'none';
+      }
+
+      function applyViewMode(mode) {
+        filterState.viewMode = mode;
+        localStorage.setItem('catalog_view_mode', mode);
+        if (mode === 'list') {
+          productsContainer.classList.remove('products-catalog-grid');
+          productsContainer.classList.add('products-catalog-list');
+          btnViewList.classList.add('active');
+          btnViewGrid.classList.remove('active');
+        } else {
+          productsContainer.classList.remove('products-catalog-list');
+          productsContainer.classList.add('products-catalog-grid');
+          btnViewGrid.classList.add('active');
+          btnViewList.classList.remove('active');
+        }
+      }
+
+      function applyFilters() {
+        let visibleCount = 0;
+
+        productCards.forEach(card => {
+          const title = card.getAttribute('data-title') || '';
+          const desc = card.getAttribute('data-description') || '';
+          const category = (card.getAttribute('data-category') || '').toLowerCase();
+          const price = parseFloat(card.getAttribute('data-price')) || 0;
+          const rating = parseFloat(card.getAttribute('data-rating')) || 0;
+
+          const matchesSearch = !filterState.search || title.includes(filterState.search) || desc.includes(filterState.search) || category.includes(filterState.search);
+          const matchesCategory = !filterState.category || category === filterState.category;
+          const matchesPrice = price <= filterState.maxPrice;
+          const matchesRating = rating >= filterState.minRating;
+
+          if (matchesSearch && matchesCategory && matchesPrice && matchesRating) {
+            card.style.display = '';
+            visibleCount++;
+          } else {
+            card.style.display = 'none';
+          }
+        });
+
+        // Update count
+        if (visibleCountEl) visibleCountEl.textContent = visibleCount;
+
+        // Show/hide empty state
+        if (emptyStateEl) {
+          emptyStateEl.style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+
+        // Render active filter chips
+        renderActiveFilterChips();
+
+        // Apply sorting on visible cards
+        applySorting();
+      }
+
+      function applySorting() {
+        const sorted = productCards.slice().sort((a, b) => {
+          const priceA = parseFloat(a.getAttribute('data-price')) || 0;
+          const priceB = parseFloat(b.getAttribute('data-price')) || 0;
+          const ratingA = parseFloat(a.getAttribute('data-rating')) || 0;
+          const ratingB = parseFloat(b.getAttribute('data-rating')) || 0;
+          const titleA = (a.getAttribute('data-title') || '').toLowerCase();
+          const titleB = (b.getAttribute('data-title') || '').toLowerCase();
+          const idA = parseInt(a.getAttribute('data-id')) || 0;
+          const idB = parseInt(b.getAttribute('data-id')) || 0;
+
+          switch (filterState.sort) {
+            case 'price-asc':
+              return priceA - priceB;
+            case 'price-desc':
+              return priceB - priceA;
+            case 'rating-desc':
+              return ratingB - ratingA;
+            case 'name-asc':
+              return titleA.localeCompare(titleB);
+            case 'featured':
+            default:
+              return idA - idB;
+          }
+        });
+
+        sorted.forEach(card => productsContainer.appendChild(card));
+        if (emptyStateEl) productsContainer.appendChild(emptyStateEl);
+      }
+
+      function renderActiveFilterChips() {
+        if (!activeFilterChips) return;
+        activeFilterChips.innerHTML = '';
+
+        if (filterState.search) {
+          addChip(`Search: "${filterState.search}"`, () => {
+            filterState.search = '';
+            if (heroSearchInput) heroSearchInput.value = '';
+            if (sidebarSearchInput) sidebarSearchInput.value = '';
+            toggleClearSearchButton();
+            applyFilters();
+          });
+        }
+
+        if (filterState.category) {
+          addChip(`Category: ${filterState.category}`, () => {
+            filterState.category = '';
+            updateActiveCategoryUI('');
+            applyFilters();
+          });
+        }
+
+        if (filterState.maxPrice < 1000) {
+          addChip(`Price: ≤ $${filterState.maxPrice}`, () => {
+            filterState.maxPrice = 1000;
+            if (priceRangeInput) priceRangeInput.value = 1000;
+            priceDisplayValue.textContent = '$1,000';
+            updatePricePresetsUI(1000);
+            applyFilters();
+          });
+        }
+
+        if (filterState.minRating > 0) {
+          addChip(`Rating: ≥ ${filterState.minRating}★`, () => {
+            filterState.minRating = 0;
+            ratingOptions.forEach(r => r.classList.remove('active'));
+            if (ratingOptions[0]) ratingOptions[0].classList.add('active');
+            applyFilters();
+          });
+        }
+      }
+
+      function addChip(label, onRemove) {
+        const chip = document.createElement('div');
+        chip.className = 'filter-chip';
+        chip.innerHTML = `<span>${label}</span><button type="button" class="btn-remove-chip" title="Remove filter"><i class="bi bi-x"></i></button>`;
+        chip.querySelector('.btn-remove-chip').addEventListener('click', onRemove);
+        activeFilterChips.appendChild(chip);
+      }
+
+      function resetAllFilters() {
+        filterState.search = '';
+        filterState.category = '';
+        filterState.maxPrice = 1000;
+        filterState.minRating = 0;
+        filterState.sort = 'featured';
+
+        if (heroSearchInput) heroSearchInput.value = '';
+        if (sidebarSearchInput) sidebarSearchInput.value = '';
+        if (priceRangeInput) priceRangeInput.value = 1000;
+        if (priceDisplayValue) priceDisplayValue.textContent = '$1,000';
+        if (sortSelect) sortSelect.value = 'featured';
+
+        toggleClearSearchButton();
+        updateActiveCategoryUI('');
+        updatePricePresetsUI(1000);
+
+        ratingOptions.forEach(r => r.classList.remove('active'));
+        if (ratingOptions[0]) ratingOptions[0].classList.add('active');
+
+        applyFilters();
+      }
+
+      function setupAddToCartFeedback() {
+        document.querySelectorAll('.add-to-cart-form').forEach(form => {
+          form.addEventListener('submit', function(e) {
+            // Optional AJAX submission with instant visual feedback
+            const formData = new FormData(this);
+            const actionUrl = this.getAttribute('action');
+
+            fetch(actionUrl, {
+              method: 'POST',
+              body: formData
+            }).then(response => {
+              showToast("Added to Cart!", "Product successfully added to your cart.");
+            }).catch(err => {
+              // Fallback to normal form submission if fetch fails
+              form.submit();
+            });
+
+            e.preventDefault();
+          });
+        });
+      }
+
+      function showToast(title, msg) {
+        if (!cartToast) return;
+        document.getElementById('toastTitle').textContent = title;
+        document.getElementById('toastMessage').textContent = msg;
+        cartToast.classList.add('show');
+        setTimeout(() => {
+          cartToast.classList.remove('show');
+        }, 3000);
+      }
+
+      // Initialize everything
+      initFilters();
     });
-
-  });
-
-</script>
-
+  </script>
+</body>
 </html>

@@ -1,0 +1,133 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Edit User - {{ user.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Edit User</h1>
+    <p class="page-subtitle">Update account details, role permissions, and avatar for #USR-{{ user.id }}.</p>
+  </div>
+  <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" style="border-radius: 12px; padding: 0.6rem 1.25rem;">
+    <i class="bi bi-arrow-left"></i> Back to Users
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8 col-xl-7">
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <h5 class="admin-card-title"><i class="bi bi-pencil-square me-2 text-info"></i>Edit User Account</h5>
+        <span class="badge bg-light text-dark border">ID: #USR-{{ user.id }}</span>
+      </div>
+
+      <form action="{{ url_for('admin_edit_user', user_id=user.id) }}" method="POST" enctype="multipart/form-data">
+        <div class="p-2">
+          <!-- Profile Avatar Preview Section -->
+          <div class="d-flex align-items-center gap-4 mb-4 pb-3 border-bottom border-secondary border-opacity-25">
+            <div class="position-relative">
+              <img id="avatarPreview" src="{{ user.image or 'https://api.dicebear.com/7.x/bottts/svg?seed=' ~ user.name }}" class="rounded-circle shadow-sm" style="width: 90px; height: 90px; object-fit: cover; border: 3px solid var(--primary-accent);" alt="User Avatar Preview" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed={{ user.name }}';">
+            </div>
+            <div class="flex-grow-1">
+              <h6 class="text-dark fw-bold mb-1">Update Profile Image</h6>
+              <p class="text-muted small mb-2">Upload a new image file:</p>
+              <input type="file" class="form-control form-control-admin" id="imageFileInput" name="image_file" accept="image/*" onchange="previewSelectedFile(this)">
+              <div class="mt-2">
+                <span class="text-muted small" style="font-size: 0.8rem;">Or update Image URL:</span>
+                <input type="url" class="form-control form-control-admin form-control-sm mt-1" id="imageInput" name="image" value="{{ user.image }}" placeholder="https://..." oninput="updateAvatarPreview(this.value)">
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <!-- User Name -->
+            <div class="col-12 col-md-6">
+              <label class="form-label-admin">User Name *</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light text-secondary"><i class="bi bi-person"></i></span>
+                <input type="text" class="form-control form-control-admin" name="name" value="{{ user.name }}" required placeholder="e.g. John Doe">
+              </div>
+            </div>
+
+            <!-- Email Address -->
+            <div class="col-12 col-md-6">
+              <label class="form-label-admin">Email Address *</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light text-secondary"><i class="bi bi-envelope"></i></span>
+                <input type="email" class="form-control form-control-admin" name="email" value="{{ user.email }}" required placeholder="e.g. john@example.com">
+              </div>
+            </div>
+
+            <!-- Password -->
+            <div class="col-12 col-md-6">
+              <label class="form-label-admin">Password</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light text-secondary"><i class="bi bi-lock"></i></span>
+                <input type="password" class="form-control form-control-admin" name="password" id="userPassword" placeholder="Leave blank to keep unchanged">
+                <button type="button" class="btn btn-outline-secondary" onclick="togglePassword()">
+                  <i class="bi bi-eye" id="togglePasswordIcon"></i>
+                </button>
+              </div>
+              <span class="text-muted small" style="font-size: 0.75rem;">Current password remains unchanged if left empty.</span>
+            </div>
+
+            <!-- User Role -->
+            <div class="col-12 col-md-6">
+              <label class="form-label-admin">User Role *</label>
+              <select class="form-select form-control-admin" name="role" required>
+                <option value="User" {% if user.role == 'User' %}selected{% endif %}>Regular User</option>
+                <option value="Admin" {% if user.role == 'Admin' %}selected{% endif %}>Administrator</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Actions: Save & Back -->
+        <div class="d-flex align-items-center justify-content-between pt-4 mt-3 border-top border-secondary border-opacity-25">
+          <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" style="border-radius: 12px; padding: 0.6rem 1.25rem;">
+            <i class="bi bi-arrow-left"></i> Cancel
+          </a>
+          <button type="submit" class="btn-primary-admin">
+            <i class="bi bi-check-circle-fill"></i> Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function previewSelectedFile(input) {
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('avatarPreview').src = e.target.result;
+      }
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
+  function updateAvatarPreview(url) {
+    const preview = document.getElementById('avatarPreview');
+    if (url && url.trim() !== '') {
+      preview.src = url;
+    } else {
+      preview.src = 'https://api.dicebear.com/7.x/bottts/svg?seed={{ user.name }}';
+    }
+  }
+
+  function togglePassword() {
+    const pwdInput = document.getElementById('userPassword');
+    const icon = document.getElementById('togglePasswordIcon');
+    if (pwdInput.type === 'password') {
+      pwdInput.type = 'text';
+      icon.className = 'bi bi-eye-slash';
+    } else {
+      pwdInput.type = 'password';
+      icon.className = 'bi bi-eye';
+    }
+  }
+</script>
+{% endblock %}
