@@ -326,6 +326,7 @@
                       </a>
                       
                       <form action="{{ url_for('add_to_cart', product_id=p.id) }}" method="POST" class="d-inline add-to-cart-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="quantity" value="1">
                         <button type="submit" class="btn-card-add-cart" title="Add to cart">
                           <i class="bi bi-cart-plus"></i>

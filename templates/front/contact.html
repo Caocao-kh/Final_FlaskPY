@@ -163,6 +163,7 @@
 
               <!-- Form Element -->
               <form action="{{ url_for('contact') }}" method="POST" class="needs-validation" id="contactForm" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-3">
 
                   <!-- Full Name -->

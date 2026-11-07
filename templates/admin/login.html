@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin Portal Login - Superman Electronics</title>
-  
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
   <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Bootstrap Icons -->
@@ -17,6 +19,7 @@
   <!-- Custom Admin Login CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='admin/login.css') }}">
 </head>
+
 <body class="admin-login-body">
 
   <!-- Ambient background glow elements -->
@@ -25,7 +28,7 @@
 
   <main class="login-container">
     <div class="admin-login-card">
-      
+
       <!-- Brand Header -->
       <div class="login-brand-wrapper">
         <div class="brand-shield-icon">
@@ -38,43 +41,37 @@
 
       <!-- Flash Messages -->
       {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            {% set alert_type = 'danger' if category in ['error', 'danger'] else ('warning' if category == 'warning' else ('success' if category == 'success' else 'info')) %}
-            <div class="admin-alert admin-alert-{{ alert_type }}" role="alert">
-              {% if alert_type == 'danger' %}
-                <i class="bi bi-exclamation-triangle-fill fs-5"></i>
-              {% elif alert_type == 'warning' %}
-                <i class="bi bi-exclamation-circle-fill fs-5"></i>
-              {% elif alert_type == 'success' %}
-                <i class="bi bi-check-circle-fill fs-5"></i>
-              {% else %}
-                <i class="bi bi-info-circle-fill fs-5"></i>
-              {% endif %}
-              <div>{{ message }}</div>
-            </div>
-          {% endfor %}
+      {% if messages %}
+      {% for category, message in messages %}
+      {% set alert_type = 'danger' if category in ['error', 'danger'] else ('warning' if category == 'warning' else
+      ('success' if category == 'success' else 'info')) %}
+      <div class="admin-alert admin-alert-{{ alert_type }}" role="alert">
+        {% if alert_type == 'danger' %}
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        {% elif alert_type == 'warning' %}
+        <i class="bi bi-exclamation-circle-fill fs-5"></i>
+        {% elif alert_type == 'success' %}
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        {% else %}
+        <i class="bi bi-info-circle-fill fs-5"></i>
         {% endif %}
+        <div>{{ message }}</div>
+      </div>
+      {% endfor %}
+      {% endif %}
       {% endwith %}
 
       <!-- Login Form -->
       <form action="{{ url_for('admin_login', next=request.args.get('next', '')) }}" method="POST" id="adminLoginForm">
-        
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
         <div class="form-floating-custom">
           <label class="form-label-custom" for="adminEmail">
             <i class="bi bi-envelope-at me-1"></i> Administrator Email
           </label>
           <div class="input-with-icon">
-            <input 
-              type="email" 
-              class="form-control-admin" 
-              id="adminEmail" 
-              name="email" 
-              placeholder="admin@superman.com" 
-              required 
-              autocomplete="email"
-              value="{{ request.form.get('email', '') }}"
-            >
+            <input type="email" class="form-control-admin" id="adminEmail" name="email" placeholder="admin@superman.com"
+              required autocomplete="email" value="{{ request.form.get('email', '') }}">
             <i class="bi bi-person input-icon"></i>
           </div>
         </div>
@@ -86,15 +83,8 @@
             </label>
           </div>
           <div class="input-with-icon">
-            <input 
-              type="password" 
-              class="form-control-admin" 
-              id="adminPassword" 
-              name="password" 
-              placeholder="••••••••••••" 
-              required 
-              autocomplete="current-password"
-            >
+            <input type="password" class="form-control-admin" id="adminPassword" name="password"
+              placeholder="••••••••••••" required autocomplete="current-password">
             <i class="bi bi-lock input-icon"></i>
             <button type="button" class="password-toggle-btn" id="togglePasswordBtn" title="Toggle password visibility">
               <i class="bi bi-eye" id="toggleIcon"></i>
@@ -173,4 +163,5 @@
     }
   </script>
 </body>
+
 </html>

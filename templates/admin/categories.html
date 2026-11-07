@@ -1,0 +1,221 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Categories Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Categories Management</h1>
+    <p class="page-subtitle">Organize and manage your product categories and catalog structure.</p>
+  </div>
+  <button type="button" class="btn-primary-admin" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+    <i class="bi bi-plus-lg"></i> Add New Category
+  </button>
+</div>
+
+<!-- Search Bar -->
+<div class="admin-card mb-4">
+  <div class="row g-3 align-items-center">
+    <div class="col-12 col-md-6 col-lg-5">
+      <div class="admin-search-box w-100">
+        <i class="bi bi-search"></i>
+        <input type="text" id="categorySearchInput" placeholder="Search category by name or description..." onkeyup="filterCategories()">
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-7 text-md-end text-muted small">
+      Showing <span id="visibleCategoryCount" class="fw-bold text-info">{{ categories|length }}</span> of {{ categories|length }} categories
+    </div>
+  </div>
+</div>
+
+<!-- Categories Table Card -->
+<div class="admin-card">
+  <div class="admin-card-header">
+    <h5 class="admin-card-title"><i class="bi bi-tags me-2 text-info"></i>Product Categories</h5>
+    <span class="text-muted small">Total: {{ categories|length }} Categories</span>
+  </div>
+
+  <div class="admin-table-responsive">
+    <table class="admin-table" id="categoriesTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Image</th>
+          <th>Category Name</th>
+          <th>Description</th>
+          <th>Products Count</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if categories %}
+          {% for cat in categories %}
+          <tr class="category-row" data-name="{{ cat.name|lower }}" data-desc="{{ (cat.description or '')|lower }}">
+            <td><span class="text-muted fw-mono">#CAT-{{ cat.id }}</span></td>
+            <td>
+              <img src="{{ cat.image }}" alt="{{ cat.name }}" class="product-thumb"
+                onerror="this.src='https://via.placeholder.com/50?text=Category';">
+            </td>
+            <td>
+              <div class="fw-bold text-dark fs-6">{{ cat.name }}</div>
+            </td>
+            <td>
+              <span class="text-muted small text-truncate d-inline-block" style="max-width: 320px;" title="{{ cat.description }}">
+                {{ cat.description or 'No description provided.' }}
+              </span>
+            </td>
+            <td>
+              <span class="badge bg-info text-dark px-2 py-1">
+                <i class="bi bi-box-seam me-1"></i>{{ cat.product_count or 0 }} products
+              </span>
+            </td>
+            <td class="text-end">
+              <div class="d-inline-flex gap-2">
+                <button type="button" class="btn-action edit" title="Edit Category"
+                  data-id="{{ cat.id }}"
+                  data-name="{{ cat.name }}"
+                  data-image="{{ cat.image or '' }}"
+                  data-description="{{ cat.description or '' }}"
+                  onclick="openEditCategoryModal(this)">
+                  <i class="bi bi-pencil-fill"></i>
+                </button>
+                <form action="{{ url_for('admin_delete_category', category_id=cat.id) }}" method="POST" style="display:inline;"
+                  onsubmit="return confirm('Are you sure you want to delete category {{ cat.name }}? This will also remove associated products.');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn-action delete" title="Delete Category">
+                    <i class="bi bi-trash-fill"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-center py-4 text-muted">
+              No categories found. Click "Add New Category" above to create one.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Add Category -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content admin-modal">
+      <div class="modal-header admin-modal-header">
+        <h5 class="modal-title fw-bold text-dark"><i class="bi bi-plus-circle me-2 text-info"></i>Add New Category</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{{ url_for('admin_add_category') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label-admin">Category Name *</label>
+              <input type="text" class="form-control form-control-admin" name="name" required placeholder="e.g. Smart Watches & Wearables">
+            </div>
+            <div class="col-12">
+              <label class="form-label-admin">Category Image</label>
+              <input type="file" class="form-control form-control-admin" name="image_file" accept="image/*">
+              <span class="text-muted small" style="font-size: 0.75rem;">Or paste image URL:</span>
+              <input type="url" class="form-control form-control-admin form-control-sm mt-1" name="image" placeholder="https://images.unsplash.com/...">
+            </div>
+            <div class="col-12">
+              <label class="form-label-admin">Description</label>
+              <textarea class="form-control form-control-admin" name="description" rows="3" placeholder="Category summary and highlights..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer admin-modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-primary-admin">Save Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit Category -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content admin-modal">
+      <div class="modal-header admin-modal-header">
+        <h5 class="modal-title fw-bold text-dark"><i class="bi bi-pencil-square me-2 text-info"></i>Edit Category</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editCategoryForm" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label-admin">Category Name *</label>
+              <input type="text" class="form-control form-control-admin" id="editCategoryName" name="name" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label-admin">Upload New Image File</label>
+              <input type="file" class="form-control form-control-admin" name="image_file" accept="image/*">
+              <span class="text-muted small" style="font-size: 0.75rem;">Or edit image URL:</span>
+              <input type="url" class="form-control form-control-admin form-control-sm mt-1" id="editCategoryImage" name="image">
+            </div>
+            <div class="col-12">
+              <label class="form-label-admin">Description</label>
+              <textarea class="form-control form-control-admin" id="editCategoryDesc" name="description" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer admin-modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-primary-admin">Update Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function filterCategories() {
+    const searchVal = document.getElementById('categorySearchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('.category-row');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      const name = row.getAttribute('data-name');
+      const desc = row.getAttribute('data-desc');
+
+      if (name.includes(searchVal) || desc.includes(searchVal)) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    document.getElementById('visibleCategoryCount').innerText = visibleCount;
+  }
+
+  function openEditCategoryModal(target, name, image, description) {
+    let id = target;
+    if (target instanceof HTMLElement || (target && target.dataset)) {
+      const d = target.dataset;
+      id = d.id;
+      name = d.name;
+      image = d.image;
+      description = d.description;
+    }
+
+    document.getElementById('editCategoryForm').action = `/admin/category/edit/${id}`;
+    document.getElementById('editCategoryName').value = name || '';
+    document.getElementById('editCategoryImage').value = image || '';
+    document.getElementById('editCategoryDesc').value = description || '';
+
+    const editModal = new bootstrap.Modal(document.getElementById('editCategoryModal'));
+    editModal.show();
+  }
+</script>
+{% endblock %}

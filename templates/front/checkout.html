@@ -40,6 +40,11 @@
     <section class="container py-5">
       <!-- Added .needs-validation and interactive submit listener to control the flow -->
       <form id="checkoutForm" class="needs-validation" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="selected_ids" value="{% for p in cart_items %}{{ p.id }}{% if not loop.last %},{% endif %}{% endfor %}">
+        {% for p in cart_items %}
+        <input type="hidden" name="selected_items" value="{{ p.id }}">
+        {% endfor %}
         <div class="row g-4">
 
           <div class="col-lg-7 d-flex flex-column gap-4 animate-fade-in-up">
@@ -107,7 +112,7 @@
                 <div class="col-md-7">
                   <div class="payment-detail border-bottom pb-2 mb-2 d-flex justify-content-between">
                     <span class="text-muted">Payment amount</span>
-                    <strong class="text-teal">${{ subtotal }}</strong>
+                    <strong class="text-teal">${{ "%.2f"|format(subtotal) }}</strong>
                   </div>
                   <div class="payment-detail border-bottom pb-2 mb-2 d-flex justify-content-between">
                     <span class="text-muted">Payment method</span>
@@ -115,7 +120,7 @@
                   </div>
                   <div class="payment-detail border-bottom pb-2 d-flex justify-content-between">
                     <span class="text-muted">Reference</span>
-                    <strong class="text-body">VE-2026-{{ subtotal }}</strong>
+                    <strong class="text-body">VE-2026-{{ "%.2f"|format(subtotal) }}</strong>
                   </div>
                   <p class="text-muted mt-3 mb-0 small">Scan the QR code with your banking app, then press the confirm
                     button to finalize your booking.</p>
@@ -139,20 +144,20 @@
                     <h3 class="h6 fw-bold mb-1 text-body text-truncate" title="{{ p.title }}">{{ p.title }}</h3>
                     <p class="text-muted small mb-0">Qty: {{ p.quantity }}</p>
                   </div>
-                  <strong class="text-body">${{ p.price }}</strong>
+                  <strong class="text-body">${{ "%.2f"|format(p.price * p.quantity) }}</strong>
                 </div>
                 {% endfor %}
               </div>
 
               <div class="summary-stack mt-4 border-top pt-3">
                 <div class="summary-line d-flex justify-content-between mb-2 text-muted">
-                  <span>Subtotal</span><strong>${{ subtotal }}</strong></div>
+                  <span>Subtotal</span><strong>${{ "%.2f"|format(subtotal) }}</strong></div>
                 <div class="summary-line d-flex justify-content-between mb-2 text-success">
                   <span>Shipping</span><strong>Free</strong></div>
                 <div class="summary-line d-flex justify-content-between mb-2 text-success"><span>Estimated
                     tax</span><strong>Free</strong></div>
                 <div class="summary-line total d-flex justify-content-between border-top pt-2 h5 fw-bold text-body">
-                  <span>Total</span><span class="text-teal">${{ subtotal }}</span></div>
+                  <span>Total</span><span class="text-teal">${{ "%.2f"|format(subtotal) }}</span></div>
               </div>
 
               <!-- Changed button type to submit to catch the HTML5 validation suite -->
@@ -161,8 +166,7 @@
 
               <div class="secure-note mt-4 p-3 bg-body-secondary rounded-3 border text-center">
                 <small class="text-muted d-block">🔒 <strong>Protected checkout</strong></small>
-                <small class="text-muted-alt doc-small">This static template is ready to connect with a live backend
-                  gateway.</small>
+                <small class="text-muted-alt doc-small">Scan the QR code to complete transfer authorization.</small>
               </div>
             </div>
           </aside>
@@ -195,34 +199,67 @@
           text: 'Please check your shipping details fields before confirming.',
           confirmButtonColor: '#0b7a75' // Matches your brand teal custom hue
         });
-      } else {
-        // Success processing timeline mockup
-        Swal.fire({
-          title: 'Processing Order...',
-          text: 'Verifying your secure QR transfer authorization.',
-          icon: 'info',
-          allowOutsideClick: false,
-          showConfirmButton: false,
-          didOpen: () => {
-            Swal.showLoading();
+        return;
+      }
 
-            // Simulating payment checking delay
-            setTimeout(() => {
+      // Valid form: show processing modal and submit order to backend
+      Swal.fire({
+        title: 'Processing Order...',
+        text: 'Verifying your secure QR transfer authorization.',
+        icon: 'info',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+
+          const formData = new FormData(form);
+          const firstName = document.getElementById('firstName') ? document.getElementById('firstName').value.trim() : '';
+          const lastName = document.getElementById('lastName') ? document.getElementById('lastName').value.trim() : '';
+          const fullName = (firstName + ' ' + lastName).trim();
+          formData.set('username', fullName || 'Customer');
+          formData.set('email', document.getElementById('email').value.trim());
+          formData.set('phone', document.getElementById('phone').value.trim());
+          formData.set('address', document.getElementById('address').value.trim());
+          formData.set('city', 'Phnom Penh');
+
+          fetch("{{ url_for('telegram_order') }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
               Swal.fire({
                 icon: 'success',
                 title: 'Order Confirmed!',
-                text: 'Thank you for shopping at VoltEdge Electronics.',
+                text: 'Thank you for shopping at Computer Store.',
                 confirmButtonColor: '#0b7a75',
-                timer: 3000,
+                timer: 2500,
                 timerProgressBar: true
               }).then(() => {
-                // Relocate to dashboard/account profile upon resolution
-                window.location.href = "/account";
+                window.location.href = data.redirect_url || "{{ url_for('cart', order_success=1) }}";
               });
-            }, 2500);
-          }
-        });
-      }
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Order Failed',
+                text: data.error || 'Failed to complete order. Please try again.',
+                confirmButtonColor: '#0b7a75'
+              });
+            }
+          })
+          .catch(err => {
+            console.error('Checkout Error:', err);
+            // Fallback to native form submission
+            form.action = "{{ url_for('telegram_order') }}";
+            form.method = "POST";
+            form.submit();
+          });
+        }
+      });
     });
   </script>
 </body>

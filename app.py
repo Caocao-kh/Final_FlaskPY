@@ -1,21 +1,46 @@
-from flask import Flask, render_template, abort, request, make_response, redirect, url_for, flash, send_from_directory, session
+from flask import Flask, Blueprint, render_template, abort, request, make_response, redirect, url_for, flash, session, jsonify
+from flask_wtf.csrf import CSRFError
+from flask_cors import CORS
 import json
 import requests
 import os
-import uuid
-from functools import wraps
 from datetime import datetime, timedelta
-from werkzeug.utils import secure_filename
-from fakeApi import data
+
+# Import extensions & shared utilities
+from extensions import csrf, limiter
+from utils import save_uploaded_image, orders_log, TELEGRAM_TOKEN_BOT, TELEGRAM_ID_CHAT
+
+# Database operations
 from database import (
     init_db,
+    # Users
     get_user_by_email,
     get_user_by_id,
     get_all_users,
     create_user as db_create_user,
     update_user as db_update_user,
-    delete_user as db_delete_user
+    delete_user as db_delete_user,
+    # Categories (Category 5pts)
+    get_all_categories,
+    get_category_by_id,
+    create_category as db_create_category,
+    update_category as db_update_category,
+    delete_category as db_delete_category,
+    # Products (Product 5pts)
+    get_all_products,
+    get_product_by_id,
+    create_product as db_create_product,
+    update_product as db_update_product,
+    delete_product as db_delete_product,
+    # Product Images (ProductImage 5pts)
+    get_images_by_product_id,
+    get_product_image_by_id,
+    create_product_image as db_create_product_image,
+    delete_product_image as db_delete_product_image
 )
+
+# Import Admin blueprint and authentication decorator from admin folder
+from admin import admin_bp, admin_required
 
 app: Flask = Flask(__name__)
 app.secret_key = 'superman_admin_secret_key_2026'
@@ -24,17 +49,243 @@ app.permanent_session_lifetime = timedelta(days=7)
 # Initialize SQLite database
 init_db()
 
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('user_id') or session.get('user_role') != 'Admin':
-            flash("Please log in with an Administrator account to access the Admin Console.", "warning")
-            next_param = request.full_path if request.query_string else request.path
-            return redirect(url_for('admin_login', next=next_param))
-        return f(*args, **kwargs)
-    return decorated_function
+# Initialize extensions
+csrf.init_app(app)
+limiter.init_app(app)
 
+# Register Admin Blueprint from admin folder
+app.register_blueprint(admin_bp)
+
+# Maintain backwards compatibility with url_for('admin_xxx') across existing templates
+for rule in list(app.url_map.iter_rules()):
+    if rule.endpoint.startswith('admin.'):
+        short_endpoint = rule.endpoint.split('.', 1)[1]
+        if short_endpoint not in app.view_functions:
+            app.add_url_rule(rule.rule, endpoint=short_endpoint, view_func=app.view_functions[rule.endpoint], methods=rule.methods)
+
+# ==============================================================================
+# CSRF ERROR HANDLER (CSRF: admin, front)
+# ==============================================================================
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "CSRF verification failed", "message": e.description}), 400
+    flash(f"Security Notice: Session expired or invalid CSRF token. Please try again.", "error")
+    return redirect(request.referrer or url_for('home'))
+
+# ==============================================================================
+# RATE LIMITER ERROR HANDLER (Limiter: admin, front)
+# ==============================================================================
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Rate limit exceeded", "message": str(e.description)}), 429
+    flash("Too many requests sent in a short period. Please slow down and try again.", "warning")
+    return make_response(render_template('front/index.html', products=get_all_products(), error_message="Rate limit exceeded"), 429)
+
+# ==============================================================================
+# CORS & CORE REST API (core / cors: api)
+# ==============================================================================
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+
+api_bp = Blueprint('api', __name__, url_prefix='/api')
+# Exempt REST API from form-based CSRF checks
+csrf.exempt(api_bp)
+
+# --- Category API ---
+@api_bp.get('/categories')
+def api_get_categories():
+    categories = get_all_categories()
+    return jsonify(categories), 200
+
+@api_bp.get('/categories/<int:category_id>')
+def api_get_category(category_id):
+    cat = get_category_by_id(category_id)
+    if not cat:
+        return jsonify({"error": "Category not found"}), 404
+    products = get_all_products(category_id=category_id)
+    cat_dict = dict(cat)
+    cat_dict['products'] = products
+    return jsonify(cat_dict), 200
+
+@api_bp.post('/categories')
+def api_create_category():
+    data = request.get_json(silent=True) or request.form
+    name = data.get('name')
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+    image = save_uploaded_image('image_file', 'image', data.get('image', ''))
+    description = data.get('description', '')
+    cat = db_create_category(name=name, image=image, description=description)
+    return jsonify(cat), 201
+
+@api_bp.put('/categories/<int:category_id>')
+def api_update_category(category_id):
+    data = request.get_json(silent=True) or request.form
+    cat = get_category_by_id(category_id)
+    if not cat:
+        return jsonify({"error": "Category not found"}), 404
+    name = data.get('name')
+    image = data.get('image')
+    description = data.get('description')
+    updated = db_update_category(category_id, name=name, image=image, description=description)
+    return jsonify(updated), 200
+
+@api_bp.delete('/categories/<int:category_id>')
+def api_delete_category(category_id):
+    success = db_delete_category(category_id)
+    if not success:
+        return jsonify({"error": "Category not found"}), 404
+    return jsonify({"message": f"Category #{category_id} deleted successfully"}), 200
+
+# --- Product API ---
+@api_bp.get('/products')
+def api_get_products():
+    category_id = request.args.get('category_id', type=int)
+    search = request.args.get('search') or request.args.get('q')
+    products = get_all_products(category_id=category_id, search=search)
+    return jsonify(products), 200
+
+@api_bp.get('/products/<int:product_id>')
+def api_get_product(product_id):
+    product = get_product_by_id(product_id)
+    if not product:
+        return jsonify({"error": "Product not found"}), 404
+    return jsonify(product), 200
+
+@api_bp.post('/products')
+def api_create_product():
+    data = request.get_json(silent=True) or request.form
+    name = data.get('name') or data.get('title')
+    if not name:
+        return jsonify({"error": "Product name is required"}), 400
+    thumbnail = save_uploaded_image('thumbnail_file', 'thumbnail', data.get('thumbnail') or data.get('image') or '')
+    cost = float(data.get('Cost') or data.get('cost') or 0.0)
+    price = float(data.get('Price') or data.get('price') or 0.0)
+    stock = int(data.get('Stock') or data.get('stock') or 0)
+    category_id = int(data.get('CategoryId') or data.get('category_id') or 1)
+    description = data.get('description', '')
+    product = db_create_product(name=name, thumbnail=thumbnail, Cost=cost, Price=price, Stock=stock, CategoryId=category_id, description=description)
+    return jsonify(product), 201
+
+@api_bp.put('/products/<int:product_id>')
+def api_update_product(product_id):
+    data = request.get_json(silent=True) or request.form
+    product = get_product_by_id(product_id)
+    if not product:
+        return jsonify({"error": "Product not found"}), 404
+    name = data.get('name') or data.get('title')
+    thumbnail = data.get('thumbnail') or data.get('image')
+    cost = float(data.get('Cost') or data.get('cost')) if ('Cost' in data or 'cost' in data) else None
+    price = float(data.get('Price') or data.get('price')) if ('Price' in data or 'price' in data) else None
+    stock = int(data.get('Stock') or data.get('stock')) if ('Stock' in data or 'stock' in data) else None
+    category_id = int(data.get('CategoryId') or data.get('category_id')) if ('CategoryId' in data or 'category_id' in data) else None
+    description = data.get('description')
+    updated = db_update_product(product_id, name=name, thumbnail=thumbnail, Cost=cost, Price=price, Stock=stock, CategoryId=category_id, description=description)
+    return jsonify(updated), 200
+
+@api_bp.delete('/products/<int:product_id>')
+def api_delete_product(product_id):
+    success = db_delete_product(product_id)
+    if not success:
+        return jsonify({"error": "Product not found"}), 404
+    return jsonify({"message": f"Product #{product_id} deleted successfully"}), 200
+
+# --- ProductImage API ---
+@api_bp.get('/products/<int:product_id>/images')
+def api_get_product_images(product_id):
+    images = get_images_by_product_id(product_id)
+    return jsonify(images), 200
+
+@api_bp.post('/products/<int:product_id>/images')
+@api_bp.post('/product-images')
+def api_create_product_image(product_id=None):
+    data = request.get_json(silent=True) or request.form
+    target_product_id = product_id or data.get('ProductId') or data.get('product_id')
+    if not target_product_id:
+        return jsonify({"error": "ProductId is required"}), 400
+    image_url = save_uploaded_image('image_file', 'name', data.get('name', ''))
+    if not image_url:
+        return jsonify({"error": "Image URL or file is required"}), 400
+    img = db_create_product_image(int(target_product_id), image_url)
+    return jsonify(img), 201
+
+@api_bp.delete('/product-images/<int:image_id>')
+def api_delete_product_image(image_id):
+    success = db_delete_product_image(image_id)
+    if not success:
+        return jsonify({"error": "Product image not found"}), 404
+    return jsonify({"message": f"Product image #{image_id} deleted successfully"}), 200
+
+# --- User API ---
+@api_bp.get('/users')
+def api_get_users():
+    users = get_all_users()
+    sanitized = []
+    for u in users:
+        d = dict(u)
+        d.pop('password', None)
+        sanitized.append(d)
+    return jsonify(sanitized), 200
+
+@api_bp.get('/users/<int:user_id>')
+def api_get_user(user_id):
+    user = get_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    d = dict(user)
+    d.pop('password', None)
+    return jsonify(d), 200
+
+@api_bp.post('/users')
+def api_create_user():
+    data = request.get_json(silent=True) or request.form
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
+    if not name or not email or not password:
+        return jsonify({"error": "name, email, and password are required"}), 400
+    if get_user_by_email(email):
+        return jsonify({"error": "User with this email already exists"}), 409
+    image = save_uploaded_image('image_file', 'image', data.get('image', ''))
+    role = data.get('role', 'User')
+    user = db_create_user(name=name, email=email, password=password, image=image, role=role)
+    d = dict(user)
+    d.pop('password', None)
+    return jsonify(d), 201
+
+@api_bp.put('/users/<int:user_id>')
+def api_update_user(user_id):
+    data = request.get_json(silent=True) or request.form
+    user = get_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
+    image = save_uploaded_image('image_file', 'image', data.get('image'))
+    role = data.get('role')
+    updated = db_update_user(user_id, name=name, email=email, password=password, image=image, role=role)
+    d = dict(updated)
+    d.pop('password', None)
+    return jsonify(d), 200
+
+@api_bp.delete('/users/<int:user_id>')
+def api_delete_user(user_id):
+    success = db_delete_user(user_id)
+    if not success:
+        return jsonify({"error": "User not found"}), 404
+    return jsonify({"message": f"User #{user_id} deleted successfully"}), 200
+
+# Register Core API Blueprint
+app.register_blueprint(api_bp)
+
+
+# ==============================================================================
+# ACCESS DECORATORS
+# ==============================================================================
 def login_required(f):
+    from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('user_id'):
@@ -44,93 +295,37 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 @app.route('/favicon.ico')
 def favicon():
     return '', 204
 
-UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-def save_uploaded_image(file_key='image_file', text_url_key='image', default_val=''):
-    file = request.files.get(file_key)
-    if file and file.filename and file.filename.strip():
-        filename = secure_filename(file.filename)
-        unique_filename = f"{uuid.uuid4().hex[:8]}_{filename}"
-        save_path = os.path.join(UPLOAD_FOLDER, unique_filename)
-        file.save(save_path)
-        return url_for('static', filename=f'uploads/{unique_filename}')
-    
-    url_val = request.form.get(text_url_key, '').strip()
-    if url_val:
-        return url_val
-    return default_val
-
-
-TELEGRAM_TOKEN_BOT = '8494492410:AAGWmIXOpMJVFvBNMaCXpZ6EBylhKMeapuI'
-TELEGRAM_ID_CHAT = '-1003771965525'
-
-# Global in-memory orders log
-orders_log = [
-    {
-        "id": 1001,
-        "customer_name": "John Doe",
-        "email": "john@example.com",
-        "phone": "+1 555-0192",
-        "address": "742 Evergreen Terrace",
-        "city": "Springfield",
-        "items": [
-            {"title": "Fjallraven - Foldsack No. 1 Backpack", "quantity": 1, "price": 109.95},
-            {"title": "Mens Casual Slim Fit", "quantity": 2, "price": 15.99}
-        ],
-        "total_amount": 141.93,
-        "timestamp": "2026-07-28 14:30",
-        "status": "Completed"
-    },
-    {
-        "id": 1002,
-        "customer_name": "Sarah Connor",
-        "email": "sarah@cyberdyne.com",
-        "phone": "+1 555-0847",
-        "address": "1200 Market Street",
-        "city": "Los Angeles",
-        "items": [
-            {"title": "John Hardy Women's Dragon Bracelet", "quantity": 1, "price": 695.00}
-        ],
-        "total_amount": 695.00,
-        "timestamp": "2026-07-30 09:15",
-        "status": "Processing"
-    },
-    {
-        "id": 1003,
-        "customer_name": "Alex Mercer",
-        "email": "alex@prototype.org",
-        "phone": "+1 555-9482",
-        "address": "450 5th Avenue",
-        "city": "New York",
-        "items": [
-            {"title": "Mens Cotton Jacket", "quantity": 1, "price": 55.99}
-        ],
-        "total_amount": 55.99,
-        "timestamp": "2026-08-01 08:40",
-        "status": "Pending"
-    }
-]
-
+# ==============================================================================
+# PUBLIC STOREFRONT ROUTES
+# ==============================================================================
 
 @app.get('/')
 def home():
-    return render_template('front/index.html', products=data)
+    products_list = get_all_products()
+    return render_template('front/index.html', products=products_list)
 
 
 @app.get('/products')
 def products():
-    categories = sorted(list(set(p["category"] for p in data if "category" in p)))
-    selected_category = request.args.get('category', '').strip().lower()
-    search_query = request.args.get('q', '').strip()
+    categories_list = get_all_categories()
+    cat_names = sorted(list(set(c['name'] for c in categories_list)))
+    selected_category = request.args.get('category', '').strip()
+    search_query = request.args.get('q', '').strip() or request.args.get('search', '').strip()
+
+    products_list = get_all_products(search=search_query)
+    if selected_category:
+        products_list = [p for p in products_list if p.get('category', '').lower() == selected_category.lower()]
+
     return render_template(
         'front/products.html',
-        products=data,
-        categories=categories,
+        products=products_list,
+        categories=cat_names,
         selected_category=selected_category,
         search_query=search_query,
         current_page='products'
@@ -139,16 +334,15 @@ def products():
 
 @app.get('/product/<int:product_id>')
 def product(product_id):
-    product_detail = next((p for p in data if p["id"] == product_id), None)
-
+    product_detail = get_product_by_id(product_id)
     if product_detail is None:
         abort(404)
 
+    all_prods = get_all_products()
     similar_products = [
-        p for p in data
-        if p["category"] == product_detail["category"] and p["id"] != product_detail["id"]
-    ]
-    similar_products = similar_products[:4]
+        p for p in all_prods
+        if p.get("CategoryId") == product_detail.get("CategoryId") and p["id"] != product_detail["id"]
+    ][:4]
 
     return render_template(
         'front/product.html',
@@ -165,7 +359,6 @@ def add_to_cart(product_id):
     if existing_cart_cookie:
         try:
             cart_list = json.loads(existing_cart_cookie)
-            # Safe-check: If the cookie format is outdated, reset it
             if cart_list and not isinstance(cart_list[0], dict):
                 cart_list = []
         except json.JSONDecodeError:
@@ -187,9 +380,10 @@ def add_to_cart(product_id):
         cart_list.append({"id": product_id, "qty": input_qty})
 
     is_buy_now = request.form.get('action') == 'buy_now'
+    if is_buy_now:
+        session['checkout_selected_ids'] = [product_id]
     target_url = url_for('checkout') if is_buy_now else url_for('cart')
     response = make_response(redirect(target_url))
-
     response.set_cookie('shopping_cart', json.dumps(cart_list), max_age=2592000, httponly=True)
     return response
 
@@ -203,23 +397,19 @@ def cart():
     if cart_cookie:
         try:
             cookie_data = json.loads(cart_cookie)
-
-            # FIX: If the data array structure is an old list format, ignore it
             if isinstance(cookie_data, list):
                 for cookie_item in cookie_data:
-                    # Double-check that the item is a dictionary to prevent crashes
                     if isinstance(cookie_item, dict):
-                        product_lookup = next((p for p in data if p["id"] == cookie_item.get("id")), None)
+                        product_lookup = get_product_by_id(cookie_item.get("id"))
                         if product_lookup:
                             item_copy = product_lookup.copy()
                             item_copy["quantity"] = cookie_item.get("qty", 1)
-
                             cart_items.append(item_copy)
                             subtotal += item_copy['price'] * item_copy['quantity']
         except json.JSONDecodeError:
             pass
 
-    return render_template('front/cart.html', cart_items=cart_items, subtotal=subtotal, total=subtotal)
+    return render_template('front/cart.html', cart_items=cart_items, subtotal=round(subtotal, 2), total=round(subtotal, 2))
 
 
 @app.post('/update-quantity-nojs/<int:product_id>')
@@ -233,9 +423,7 @@ def update_quantity_nojs(product_id):
         except json.JSONDecodeError:
             pass
 
-    # Read the data natively from the form submission payload
-    change_direction = request.form.get('direction')  # Captures 'up' or 'down'
-
+    change_direction = request.form.get('direction')
     for item in cart_list:
         if isinstance(item, dict) and item.get("id") == product_id:
             if change_direction == 'up':
@@ -244,10 +432,7 @@ def update_quantity_nojs(product_id):
                 item["qty"] -= 1
             break
 
-    # Build response redirect back to the cart page
     response = make_response(redirect(url_for('cart')))
-
-    # Save the updated cart state back inside browser cookie memory
     response.set_cookie('shopping_cart', json.dumps(cart_list), max_age=2592000, httponly=True)
     return response
 
@@ -263,76 +448,162 @@ def remove_from_cart(product_id):
         except json.JSONDecodeError:
             pass
 
-    # Rebuild the list, filtering out the item matching our target product_id
     updated_cart = [
         item for item in cart_list
         if isinstance(item, dict) and item.get("id") != product_id
     ]
 
-    # Build a native redirect response back to your main cart page view
     response = make_response(redirect(url_for('cart')))
-
-    # Update the browser cookie with our newly trimmed array string
     response.set_cookie('shopping_cart', json.dumps(updated_cart), max_age=2592000, httponly=True)
     return response
 
-@app.get('/checkout')
+
+@app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
     cart_cookie = request.cookies.get('shopping_cart')
-    cart_items = []
-    subtotal = 0.0
+    cart_list = []
 
     if cart_cookie:
         try:
             cookie_data = json.loads(cart_cookie)
-
-            # FIX: Double-check that the item is a dictionary to prevent crashes
             if isinstance(cookie_data, list):
-                for cookie_item in cookie_data:
-                    if isinstance(cookie_item, dict):
-                        product_lookup = next((p for p in data if p["id"] == cookie_item.get("id")), None)
-                        if product_lookup:
-                            item_copy = product_lookup.copy()
-                            item_copy["quantity"] = cookie_item.get("qty", 1)
-                            cart_items.append(item_copy)
-                            subtotal += item_copy['price'] * item_copy['quantity']
+                cart_list = [item for item in cookie_data if isinstance(item, dict)]
         except json.JSONDecodeError:
-            pass
+            cart_list = []
 
-    return render_template('front/checkout.html', cart_items=cart_items, subtotal=subtotal, total=subtotal)
+    if not cart_list:
+        flash("Your shopping cart is empty.", "info")
+        return redirect(url_for('cart'))
+
+    # Determine which product IDs are selected
+    selected_ids = []
+    if request.method == 'POST':
+        raw_selected = request.form.getlist('selected_items')
+        if not raw_selected and request.form.get('selected_ids'):
+            raw_selected = [x.strip() for x in request.form.get('selected_ids').split(',') if x.strip()]
+        for s in raw_selected:
+            try:
+                selected_ids.append(int(s))
+            except (ValueError, TypeError):
+                pass
+        # Save selection to session
+        session['checkout_selected_ids'] = selected_ids
+    else:
+        # GET request: query param takes priority, then session, then all items as fallback
+        if 'selected' in request.args:
+            for s in request.args.get('selected', '').split(','):
+                try:
+                    selected_ids.append(int(s.strip()))
+                except (ValueError, TypeError):
+                    pass
+            session['checkout_selected_ids'] = selected_ids
+        elif session.get('checkout_selected_ids'):
+            selected_ids = session.get('checkout_selected_ids', [])
+        else:
+            selected_ids = [item.get('id') for item in cart_list if item.get('id')]
+            session['checkout_selected_ids'] = selected_ids
+
+    # Validate selected products on backend against user's cart and database
+    cart_map = {item.get('id'): item.get('qty', 1) for item in cart_list if item.get('id')}
+    selected_set = set(selected_ids)
+
+    checkout_items = []
+    subtotal = 0.0
+
+    for item in cart_list:
+        pid = item.get('id')
+        if pid in selected_set:
+            product_lookup = get_product_by_id(pid)
+            if product_lookup:
+                item_copy = product_lookup.copy()
+                item_copy["quantity"] = cart_map.get(pid, 1)
+                checkout_items.append(item_copy)
+                subtotal += item_copy['price'] * item_copy['quantity']
+
+    if not checkout_items:
+        flash("Please select at least one product from your cart to proceed to checkout.", "warning")
+        return redirect(url_for('cart'))
+
+    # Update session with validated selected IDs
+    session['checkout_selected_ids'] = [item['id'] for item in checkout_items]
+
+    return render_template(
+        'front/checkout.html',
+        cart_items=checkout_items,
+        subtotal=round(subtotal, 2),
+        total=round(subtotal, 2),
+        selected_ids=[item['id'] for item in checkout_items]
+    )
 
 
 @app.route('/telegram_order', methods=['POST'])
+@limiter.limit("30 per minute")
 def telegram_order():
     cart_cookie = request.cookies.get('shopping_cart')
-    cart_items = []
-    subtotal = 0.0
-
+    raw_cart_list = []
     if cart_cookie:
         try:
             cookie_data = json.loads(cart_cookie)
             if isinstance(cookie_data, list):
-                for cookie_item in cookie_data:
-                    if isinstance(cookie_item, dict):
-                        product_lookup = next((p for p in data if p["id"] == cookie_item.get("id")), None)
-                        if product_lookup:
-                            item_copy = product_lookup.copy()
-                            item_copy["quantity"] = cookie_item.get("qty", 1)
-                            cart_items.append(item_copy)
-                            subtotal += item_copy['price'] * item_copy['quantity']
+                raw_cart_list = [it for it in cookie_data if isinstance(it, dict)]
         except json.JSONDecodeError:
-            pass
+            raw_cart_list = []
 
-    if not cart_items:
+    if not raw_cart_list:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({"success": False, "error": "Your shopping cart is empty"}), 400
         return redirect(url_for('cart'))
 
-    username = request.form.get('username', 'N/A')
-    address = request.form.get('address', 'N/A')
-    city = request.form.get('city', 'N/A')
-    phone = request.form.get('phone', 'N/A')
-    email = request.form.get('email', 'N/A')
+    # Determine purchased IDs from form or session
+    selected_raw = request.form.getlist('selected_items')
+    if not selected_raw and request.form.get('selected_ids'):
+        selected_raw = [x.strip() for x in request.form.get('selected_ids').split(',') if x.strip()]
 
-    # Record order into internal orders_log for admin view
+    selected_ids = []
+    for sid in selected_raw:
+        try:
+            selected_ids.append(int(sid))
+        except (ValueError, TypeError):
+            pass
+
+    if not selected_ids and session.get('checkout_selected_ids'):
+        selected_ids = session.get('checkout_selected_ids', [])
+
+    cart_map = {item.get('id'): item.get('qty', 1) for item in raw_cart_list if item.get('id')}
+
+    if selected_ids:
+        purchased_ids_set = set(selected_ids).intersection(cart_map.keys())
+    else:
+        purchased_ids_set = set(cart_map.keys())
+
+    cart_items = []
+    subtotal = 0.0
+
+    for pid in purchased_ids_set:
+        product_lookup = get_product_by_id(pid)
+        if product_lookup:
+            item_copy = product_lookup.copy()
+            item_copy["quantity"] = cart_map.get(pid, 1)
+            cart_items.append(item_copy)
+            subtotal += item_copy['price'] * item_copy['quantity']
+
+    if not cart_items:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({"success": False, "error": "No valid products found for checkout"}), 400
+        flash("No valid products were selected for order.", "warning")
+        return redirect(url_for('cart'))
+
+    username = request.form.get('username', '').strip()
+    if not username:
+        first_name = request.form.get('firstName', '').strip()
+        last_name = request.form.get('lastName', '').strip()
+        username = f"{first_name} {last_name}".strip() or "N/A"
+
+    address = request.form.get('address', 'N/A').strip() or 'N/A'
+    city = request.form.get('city', 'Phnom Penh').strip() or 'Phnom Penh'
+    phone = request.form.get('phone', 'N/A').strip() or 'N/A'
+    email = request.form.get('email', 'N/A').strip() or 'N/A'
+
     new_order_id = 1000 + len(orders_log) + 1
     orders_log.insert(0, {
         "id": new_order_id,
@@ -342,12 +613,11 @@ def telegram_order():
         "address": address,
         "city": city,
         "items": cart_items,
-        "total_amount": subtotal,
+        "total_amount": round(subtotal, 2),
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "status": "Pending"
     })
 
-    # Build text message for Telegram
     message = "🛍️ **NEW ORDER RECEIVED** 🛍️\n\n"
     message += "👤 **Customer Information:**\n"
     message += f"- **Name:** {username}\n"
@@ -356,11 +626,9 @@ def telegram_order():
     message += f"- **Address:** {address}\n"
     message += f"- **City:** {city}\n\n"
     message += "📦 **Items:**\n"
-    
     for item in cart_items:
         item_total = item['price'] * item['quantity']
         message += f"- {item['title']} (x{item['quantity']}) — ${item_total:.2f}\n"
-    
     message += f"\n💰 **Total Amount:** ${subtotal:.2f}"
 
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN_BOT}/sendMessage"
@@ -371,13 +639,35 @@ def telegram_order():
     }
 
     try:
-        telegram_response = requests.post(telegram_url, json=payload)
-        telegram_response.raise_for_status()
-    except requests.exceptions.RequestException as e:
+        requests.post(telegram_url, json=payload, timeout=3)
+    except Exception as e:
         print(f"Telegram API Error: {e}")
 
-    response = make_response(redirect(url_for('cart', order_success=1)))
-    response.delete_cookie('shopping_cart')
+    # Remove ONLY purchased products from the shopping cart cookie
+    remaining_cart = [
+        item for item in raw_cart_list
+        if item.get("id") not in purchased_ids_set
+    ]
+
+    # Clear checkout session selection
+    session.pop('checkout_selected_ids', None)
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
+
+    if is_ajax:
+        response = make_response(jsonify({
+            "success": True,
+            "order_id": new_order_id,
+            "redirect_url": url_for('cart', order_success=1)
+        }))
+    else:
+        response = make_response(redirect(url_for('cart', order_success=1)))
+
+    if remaining_cart:
+        response.set_cookie('shopping_cart', json.dumps(remaining_cart), max_age=2592000, httponly=True)
+    else:
+        response.delete_cookie('shopping_cart')
+
     return response
 
 
@@ -388,12 +678,42 @@ def account():
     return render_template('front/account.html', user=user)
 
 
+@app.post('/account/update')
+@login_required
+def update_account():
+    user_id = session.get('user_id')
+    user = get_user_by_id(user_id)
+    if not user:
+        flash("User session not found.", "error")
+        return redirect(url_for('login'))
+
+    name = request.form.get('name', user['name']).strip()
+    password = request.form.get('password', '').strip()
+    image_file = request.files.get('image_file')
+
+    new_image = user.get('image')
+    if image_file and image_file.filename and image_file.filename.strip():
+        new_image = save_uploaded_image('image_file', 'image', user.get('image'))
+
+    updated = db_update_user(user_id=user_id, name=name, password=password if password else None, image=new_image)
+    if updated:
+        session['user_name'] = updated['name']
+        session['user_image'] = updated.get('image', '')
+        session['user'] = updated['name']
+        flash("Your profile information has been updated successfully.", "success")
+    else:
+        flash("Failed to update profile.", "error")
+
+    return redirect(url_for('account'))
+
+
 @app.get('/forget-password')
 def forget_password():
     return render_template('front/forget-password.html')
 
 
 @app.route('/contact', methods=['GET', 'POST'])
+@limiter.limit("30 per minute")
 def contact():
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
@@ -402,7 +722,6 @@ def contact():
         subject = request.form.get('subject', '').strip()
         message_text = request.form.get('message', '').strip()
 
-        # Build notification for Telegram if configured
         tg_text = f"📩 **NEW CONTACT INQUIRY**\n\n"
         tg_text += f"👤 **Name:** {name}\n"
         tg_text += f"✉️ **Email:** {email}\n"
@@ -428,59 +747,11 @@ def contact():
 
 
 # ==============================================================================
-# AUTHENTICATION ROUTES (ADMIN & STOREFRONT)
+# STOREFRONT AUTHENTICATION
 # ==============================================================================
 
-@app.route('/admin/login', methods=['GET', 'POST'])
-def admin_login():
-    # If already logged in as Admin, redirect directly to dashboard
-    if session.get('user_id') and session.get('user_role') == 'Admin':
-        return redirect(url_for('admin_dashboard'))
-
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '').strip()
-        remember = bool(request.form.get('remember'))
-
-        # Find matching user from database
-        user = get_user_by_email(email)
-
-        if not user or user.get('password') != password:
-            flash("Invalid administrator email or password.", "error")
-            return render_template('admin/login.html')
-
-        if user.get('role') != 'Admin':
-            flash("Access Denied: Only Administrator accounts can log in here.", "warning")
-            return render_template('admin/login.html')
-
-        # Successful Admin Authentication
-        session.permanent = remember
-        session['user_id'] = user['id']
-        session['user_name'] = user.get('name', 'Admin User')
-        session['user_email'] = user.get('email', '')
-        session['user_role'] = user.get('role', 'Admin')
-        session['user_image'] = user.get('image', '')
-        session['user'] = user.get('name', 'Admin User')
-
-        flash(f"Welcome back, {user.get('name', 'Admin')}!", "success")
-
-        next_url = request.args.get('next')
-        if next_url and next_url.startswith('/') and not next_url.startswith('//'):
-            return redirect(next_url)
-        return redirect(url_for('admin_dashboard'))
-
-    return render_template('admin/login.html')
-
-
-@app.route('/admin/logout', methods=['GET', 'POST'])
-def admin_logout():
-    user_name = session.get('user_name', 'Admin')
-    session.clear()
-    flash(f"Goodbye {user_name}, you have been securely logged out.", "info")
-    return redirect(url_for('admin_login'))
-
-
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("15 per minute")
 def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -488,7 +759,6 @@ def login():
         remember = bool(request.form.get('remember'))
 
         user = get_user_by_email(email)
-
         if not user or user.get('password') != password:
             flash("Invalid email or password.", "error")
             return render_template('front/login.html')
@@ -516,6 +786,7 @@ def login():
 
 
 @app.route('/create_user', methods=['GET', 'POST'])
+@limiter.limit("15 per minute")
 def create_user():
     if request.method == 'POST':
         first_name = request.form.get('first_name', '').strip()
@@ -535,11 +806,13 @@ def create_user():
             return redirect(url_for('login'))
 
         default_avatar = f"https://api.dicebear.com/7.x/bottts/svg?seed={name}"
+        avatar_img = save_uploaded_image('image_file', 'image', default_avatar)
+
         new_user = db_create_user(
             name=name,
             email=email,
             password=password,
-            image=default_avatar,
+            image=avatar_img,
             role='User'
         )
 
@@ -563,206 +836,5 @@ def logout():
     return redirect(url_for('home'))
 
 
-# ==============================================================================
-# ADMIN DASHBOARD & MANAGEMENT ROUTES (PROTECTED)
-# ==============================================================================
-
-@app.get('/home/dashborad')
-@app.get('/admin/dashborad')
-@app.get('/dashboard')
-@app.get('/admin/dashboard')
-@app.get('/admin')
-@admin_required
-def admin_dashboard():
-    total_products = len(data)
-    total_revenue = sum(o.get('total_amount', 0) for o in orders_log) + sum(p.get('price', 0) * 10 for p in data)
-    total_orders = len(orders_log)
-
-    ratings = [p['rating']['rate'] for p in data if isinstance(p.get('rating'), dict) and 'rate' in p['rating']]
-    avg_rating = sum(ratings) / len(ratings) if ratings else 0.0
-
-    category_counts = {}
-    for p in data:
-        cat = p.get('category', 'uncategorized')
-        category_counts[cat] = category_counts.get(cat, 0) + 1
-
-    top_products = sorted(data, key=lambda x: x.get('rating', {}).get('rate', 0) if isinstance(x.get('rating'), dict) else 0, reverse=True)[:5]
-    recent_orders = orders_log[:5]
-
-    stats = {
-        "total_products": total_products,
-        "total_revenue": total_revenue,
-        "total_orders": total_orders,
-        "avg_rating": avg_rating
-    }
-
-    return render_template(
-        'admin/dashboard.html',
-        active_page='dashboard',
-        stats=stats,
-        category_counts=category_counts,
-        top_products=top_products,
-        recent_orders=recent_orders
-    )
-
-
-@app.get('/admin/products')
-@admin_required
-def admin_products():
-    categories = sorted(list(set(p.get('category', '') for p in data if p.get('category'))))
-    return render_template('admin/products.html', active_page='products', products=data, categories=categories)
-
-
-@app.post('/admin/product/add')
-@admin_required
-def admin_add_product():
-    try:
-        title = request.form.get('title')
-        price = float(request.form.get('price', 0))
-        category = request.form.get('category')
-        description = request.form.get('description')
-        image = save_uploaded_image('image_file', 'image', 'https://via.placeholder.com/200')
-
-        max_id = max((p.get('id', 0) for p in data), default=0)
-        new_product = {
-            "id": max_id + 1,
-            "title": title,
-            "price": price,
-            "category": category,
-            "image": image,
-            "description": description,
-            "rating": {"rate": 5.0, "count": 1}
-        }
-        data.insert(0, new_product)
-        flash(f"Product '{title}' created successfully!", "success")
-    except Exception as e:
-        flash(f"Error adding product: {str(e)}", "error")
-
-    return redirect(url_for('admin_products'))
-
-
-@app.post('/admin/product/edit/<int:product_id>')
-@admin_required
-def admin_edit_product(product_id):
-    product_item = next((p for p in data if p["id"] == product_id), None)
-    if not product_item:
-        flash("Product not found", "error")
-        return redirect(url_for('admin_products'))
-
-    try:
-        product_item['title'] = request.form.get('title', product_item['title'])
-        product_item['price'] = float(request.form.get('price', product_item['price']))
-        product_item['category'] = request.form.get('category', product_item['category'])
-        product_item['description'] = request.form.get('description', product_item['description'])
-
-        new_image = save_uploaded_image('image_file', 'image', product_item.get('image', ''))
-        if new_image:
-            product_item['image'] = new_image
-
-        flash(f"Product '{product_item['title']}' updated successfully!", "success")
-    except Exception as e:
-        flash(f"Error updating product: {str(e)}", "error")
-
-    return redirect(url_for('admin_products'))
-
-
-@app.route('/admin/product/delete/<int:product_id>', methods=['POST', 'GET'])
-@admin_required
-def admin_delete_product(product_id):
-    global data
-    product_item = next((p for p in data if p["id"] == product_id), None)
-    if product_item:
-        data.remove(product_item)
-        flash(f"Product #{product_id} deleted successfully!", "success")
-    else:
-        flash("Product not found", "error")
-    return redirect(url_for('admin_products'))
-
-
-@app.get('/admin/orders')
-@admin_required
-def admin_orders():
-    return render_template('admin/orders.html', active_page='orders', orders=orders_log)
-
-
-@app.get('/admin/users')
-@admin_required
-def admin_users():
-    users_list = get_all_users()
-    return render_template('admin/users.html', active_page='users', users=users_list)
-
-
-@app.route('/admin/user/add', methods=['GET', 'POST'])
-@admin_required
-def admin_add_user():
-    if request.method == 'POST':
-        try:
-            name = request.form.get('name', '').strip()
-            email = request.form.get('email', '').strip().lower()
-            password = request.form.get('password', '').strip()
-            role = request.form.get('role', 'User')
-
-            if get_user_by_email(email):
-                flash("A user account with this email already exists.", "warning")
-                return render_template('admin/add_user.html', active_page='users')
-
-            default_avatar = f"https://api.dicebear.com/7.x/bottts/svg?seed={name}"
-            image = save_uploaded_image('image_file', 'image', default_avatar)
-
-            db_create_user(name=name, email=email, password=password, image=image, role=role)
-            flash(f"User '{name}' created successfully!", "success")
-            return redirect(url_for('admin_users'))
-        except Exception as e:
-            flash(f"Error adding user: {str(e)}", "error")
-
-    return render_template('admin/add_user.html', active_page='users')
-
-
-@app.route('/admin/user/edit/<int:user_id>', methods=['GET', 'POST'])
-@admin_required
-def admin_edit_user(user_id):
-    user_item = get_user_by_id(user_id)
-    if not user_item:
-        flash("User not found", "error")
-        return redirect(url_for('admin_users'))
-
-    if request.method == 'POST':
-        try:
-            name = request.form.get('name', user_item['name']).strip()
-            email = request.form.get('email', user_item['email']).strip().lower()
-            password = request.form.get('password', '').strip()
-            role = request.form.get('role', user_item['role'])
-
-            existing = get_user_by_email(email)
-            if existing and existing['id'] != user_id:
-                flash("Another user account with this email already exists.", "warning")
-                return render_template('admin/edit_user.html', active_page='users', user=user_item)
-
-            new_image = save_uploaded_image('image_file', 'image', user_item.get('image', ''))
-            image = new_image if new_image else user_item.get('image', '')
-
-            db_update_user(user_id=user_id, name=name, email=email, password=password, image=image, role=role)
-            flash(f"User '{name}' updated successfully!", "success")
-            return redirect(url_for('admin_users'))
-        except Exception as e:
-            flash(f"Error updating user: {str(e)}", "error")
-
-    return render_template('admin/edit_user.html', active_page='users', user=user_item)
-
-
-@app.route('/admin/user/delete/<int:user_id>', methods=['POST', 'GET'])
-@admin_required
-def admin_delete_user(user_id):
-    success = db_delete_user(user_id)
-    if success:
-        flash(f"User #{user_id} deleted successfully!", "success")
-    else:
-        flash("User not found", "error")
-    return redirect(url_for('admin_users'))
-
-
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5001, debug=True)
-
-
-    

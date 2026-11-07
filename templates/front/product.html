@@ -53,6 +53,7 @@
 
             <div class="d-grid gap-2 mt-auto pt-3">
               <form action="/add-to-cart/{{ product.id }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-4" style="max-width: 120px;">
                   <input type="number" name="quantity" value="1" class="form-control">
                 </div>

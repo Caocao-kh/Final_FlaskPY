@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='admin/admin.css') }}">
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- CSRF Token Meta -->
+  <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body class="admin-body">
 
@@ -36,6 +38,10 @@
       <a href="{{ url_for('admin_dashboard') }}" class="sidebar-link {% if active_page == 'dashboard' %}active{% endif %}">
         <i class="bi bi-grid-1x2-fill"></i>
         <span>Dashboard</span>
+      </a>
+      <a href="{{ url_for('admin_categories') }}" class="sidebar-link {% if active_page == 'categories' %}active{% endif %}">
+        <i class="bi bi-tags-fill"></i>
+        <span>Categories</span>
       </a>
       <a href="{{ url_for('admin_products') }}" class="sidebar-link {% if active_page == 'products' %}active{% endif %}">
         <i class="bi bi-box-seam-fill"></i>

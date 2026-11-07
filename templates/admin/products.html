@@ -5,8 +5,9 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">Products</h1>
-    <p class="page-subtitle">View, search, create, update, or remove inventory products.</p>
+    <h1 class="page-title">Products </h1>
+    <p class="page-subtitle">View, search, create, update, or remove inventory products with stock and image gallery.
+    </p>
   </div>
   <button type="button" class="btn-primary-admin" data-bs-toggle="modal" data-bs-target="#addProductModal">
     <i class="bi bi-plus-lg"></i> Add New Product
@@ -19,7 +20,7 @@
     <div class="col-12 col-md-6 col-lg-4">
       <div class="admin-search-box w-100">
         <i class="bi bi-search"></i>
-        <input type="text" id="productSearchInput" placeholder="Search by title or category..."
+        <input type="text" id="productSearchInput" placeholder="Search by name or category..."
           onkeyup="filterProducts()">
       </div>
     </div>
@@ -27,7 +28,11 @@
       <select class="form-select form-control-admin" id="categoryFilterSelect" onchange="filterProducts()">
         <option value="">All Categories</option>
         {% for cat in categories %}
+        {% if cat is mapping %}
+        <option value="{{ cat.name }}">{{ cat.name }}</option>
+        {% else %}
         <option value="{{ cat }}">{{ cat|title }}</option>
+        {% endif %}
         {% endfor %}
       </select>
     </div>
@@ -47,42 +52,72 @@
           <th>ID</th>
           <th>Product Info</th>
           <th>Category</th>
+          <th>Cost</th>
           <th>Price</th>
-          <th>Rating</th>
-          <th>Reviews Count</th>
+          <th>Stock</th>
+          <th>Gallery</th>
           <th class="text-end">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for p in products %}
-        <tr class="product-row" data-title="{{ p.title|lower }}" data-category="{{ p.category }}">
-          <td><span class="text-muted fw-mono">#{{ p.id }}</span></td>
+        <tr class="product-row" data-title="{{ (p.name or p.title)|lower }}" data-category="{{ p.category }}">
+          <td><span class="text-muted fw-mono">#PRD-{{ p.id }}</span></td>
           <td>
             <div class="d-flex align-items-center gap-3">
-              <img src="{{ p.image }}" class="product-thumb" alt="Product Image"
+              <img src="{{ p.thumbnail or p.image }}" class="product-thumb" alt="Product Image"
                 onerror="this.src='https://via.placeholder.com/40';">
               <div>
-                <div class="fw-semibold text-dark text-truncate" style="max-width: 280px;" title="{{ p.title }}">{{
-                  p.title }}</div>
-                <div class="text-muted small text-truncate" style="max-width: 280px;">{{ p.description }}</div>
+                <div class="fw-semibold text-dark text-truncate" style="max-width: 250px;"
+                  title="{{ p.name or p.title }}">
+                  {{ p.name or p.title }}
+                </div>
+                <div class="text-muted small text-truncate" style="max-width: 250px;">{{ p.description }}</div>
               </div>
             </div>
           </td>
           <td><span class="badge-category">{{ p.category }}</span></td>
-          <td class="fw-bold text-success">${{ "%.2f"|format(p.price) }}</td>
+          <td class="text-muted">${{ "%.2f"|format(p.Cost or p.cost or 0.0) }}</td>
+          <td class="fw-bold text-success">${{ "%.2f"|format(p.Price or p.price or 0.0) }}</td>
           <td>
-            <span class="text-warning fw-semibold"><i class="bi bi-star-fill me-1"></i>{{ p.rating.rate if p.rating else
-              'N/A' }}</span>
+            {% set stock_qty = p.Stock if p.Stock is defined else (p.stock if p.stock is defined else 0) %}
+            {% if stock_qty > 10 %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">{{ stock_qty }} in
+              stock</span>
+            {% elif stock_qty > 0 %}
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">{{ stock_qty }}
+              low</span>
+            {% else %}
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Out of stock</span>
+            {% endif %}
           </td>
-          <td><span class="text-muted">{{ p.rating.count if p.rating else 0 }}</span></td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1"
+              data-id="{{ p.id }}"
+              data-title="{{ p.name or p.title }}"
+              onclick="openImagesModal(this)">
+              <i class="bi bi-images"></i>
+              <span>Photos</span>
+            </button>
+          </td>
           <td class="text-end">
             <div class="d-inline-flex gap-2">
               <button class="btn-action edit" title="Edit Product"
-                onclick="openEditModal({{ p.id }}, '{{ p.title|replace("'", "\\'") }}', {{ p.price }}, '{{ p.category|replace("'", "\\'") }}', '{{ p.image|replace("'", "\\'") }}', '{{ p.description|replace("'", "\\'")|replace('\n', ' ') }}')">
+                data-id="{{ p.id }}"
+                data-name="{{ p.name or p.title }}"
+                data-cost="{{ p.Cost or p.cost or 0 }}"
+                data-price="{{ p.Price or p.price or 0 }}"
+                data-stock="{{ p.Stock if p.Stock is defined else (p.stock or 0) }}"
+                data-category-id="{{ p.CategoryId or p.category_id or 1 }}"
+                data-thumbnail="{{ p.thumbnail or p.image or '' }}"
+                data-description="{{ p.description or '' }}"
+                onclick="openEditModal(this)">
                 <i class="bi bi-pencil-fill"></i>
               </button>
               <form action="{{ url_for('admin_delete_product', product_id=p.id) }}" method="POST"
-                style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this product?');">
+                style="display:inline;"
+                onsubmit="return confirm('Are you sure you want to delete product #{{ p.id }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-action delete" title="Delete Product">
                   <i class="bi bi-trash-fill"></i>
                 </button>
@@ -105,34 +140,55 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="{{ url_for('admin_add_product') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body p-4">
           <div class="row g-3">
             <div class="col-12 col-md-8">
-              <label class="form-label-admin">Product Title *</label>
-              <input type="text" class="form-control form-control-admin" name="title" required
-                placeholder="e.g. Wireless Noise Canceling Headphones">
+              <label class="form-label-admin">Product Name *</label>
+              <input type="text" class="form-control form-control-admin" name="name" required
+                placeholder="e.g. Sony WH-1000XM5 Wireless Headphones">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label-admin">Category *</label>
+              <select class="form-select form-control-admin" name="CategoryId" required>
+                {% for cat in categories %}
+                {% if cat is mapping %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% else %}
+                <option value="{{ loop.index }}">{{ cat|title }}</option>
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <label class="form-label-admin">Cost ($) *</label>
+              <input type="number" step="0.01" class="form-control form-control-admin" name="Cost" required
+                placeholder="150.00">
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label-admin">Price ($) *</label>
-              <input type="number" step="0.01" class="form-control form-control-admin" name="price" required
-                placeholder="99.99">
+              <input type="number" step="0.01" class="form-control form-control-admin" name="Price" required
+                placeholder="249.99">
             </div>
-            <div class="col-12 col-md-6">
-              <label class="form-label-admin">Category *</label>
-              <input type="text" class="form-control form-control-admin" name="category" required
-                placeholder="e.g. electronics, men's clothing">
+            <div class="col-12 col-md-4">
+              <label class="form-label-admin">Stock Quantity *</label>
+              <input type="number" class="form-control form-control-admin" name="Stock" required placeholder="50"
+                value="50">
             </div>
-            <div class="col-12 col-md-6">
-              <label class="form-label-admin">Product Image</label>
-              <input type="file" class="form-control form-control-admin" name="image_file" accept="image/*">
-              <span class="text-muted small" style="font-size: 0.75rem;">Or paste Image URL:</span>
-              <input type="url" class="form-control form-control-admin form-control-sm mt-1" name="image"
-                placeholder="https://example.com/image.png">
-            </div>
+
             <div class="col-12">
-              <label class="form-label-admin">Description *</label>
-              <textarea class="form-control form-control-admin" name="description" rows="3" required
-                placeholder="Write a brief product description..."></textarea>
+              <label class="form-label-admin">Product Thumbnail Image</label>
+              <input type="file" class="form-control form-control-admin" name="thumbnail_file" accept="image/*">
+              <span class="text-muted small" style="font-size: 0.75rem;">Or paste Thumbnail URL:</span>
+              <input type="url" class="form-control form-control-admin form-control-sm mt-1" name="thumbnail"
+                placeholder="https://images.unsplash.com/...">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label-admin">Description</label>
+              <textarea class="form-control form-control-admin" name="description" rows="3"
+                placeholder="Write full product specifications and description..."></textarea>
             </div>
           </div>
         </div>
@@ -154,31 +210,53 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="editProductForm" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body p-4">
           <div class="row g-3">
             <div class="col-12 col-md-8">
-              <label class="form-label-admin">Product Title *</label>
-              <input type="text" class="form-control form-control-admin" id="editTitle" name="title" required>
+              <label class="form-label-admin">Product Name *</label>
+              <input type="text" class="form-control form-control-admin" id="editName" name="name" required>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label-admin">Category *</label>
+              <select class="form-select form-control-admin" id="editCategoryId" name="CategoryId" required>
+                {% for cat in categories %}
+                {% if cat is mapping %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% else %}
+                <option value="{{ loop.index }}">{{ cat|title }}</option>
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <label class="form-label-admin">Cost ($) *</label>
+              <input type="number" step="0.01" class="form-control form-control-admin" id="editCost" name="Cost"
+                required>
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label-admin">Price ($) *</label>
-              <input type="number" step="0.01" class="form-control form-control-admin" id="editPrice" name="price"
+              <input type="number" step="0.01" class="form-control form-control-admin" id="editPrice" name="Price"
                 required>
             </div>
-            <div class="col-12 col-md-6">
-              <label class="form-label-admin">Category *</label>
-              <input type="text" class="form-control form-control-admin" id="editCategory" name="category" required>
+            <div class="col-12 col-md-4">
+              <label class="form-label-admin">Stock Quantity *</label>
+              <input type="number" class="form-control form-control-admin" id="editStock" name="Stock" required>
             </div>
-            <div class="col-12 col-md-6">
-              <label class="form-label-admin">Upload New Image File</label>
-              <input type="file" class="form-control form-control-admin" name="image_file" accept="image/*">
-              <span class="text-muted small" style="font-size: 0.75rem;">Or edit Image URL:</span>
-              <input type="url" class="form-control form-control-admin form-control-sm mt-1" id="editImage" name="image">
-            </div>
+
             <div class="col-12">
-              <label class="form-label-admin">Description *</label>
-              <textarea class="form-control form-control-admin" id="editDescription" name="description" rows="3"
-                required></textarea>
+              <label class="form-label-admin">Upload New Thumbnail</label>
+              <input type="file" class="form-control form-control-admin" name="thumbnail_file" accept="image/*">
+              <span class="text-muted small" style="font-size: 0.75rem;">Or edit Thumbnail URL:</span>
+              <input type="url" class="form-control form-control-admin form-control-sm mt-1" id="editThumbnail"
+                name="thumbnail">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label-admin">Description</label>
+              <textarea class="form-control form-control-admin" id="editDescription" name="description"
+                rows="3"></textarea>
             </div>
           </div>
         </div>
@@ -187,6 +265,54 @@
           <button type="submit" class="btn-primary-admin">Update Changes</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Product Images Gallery Management (ProductImage 5pts) -->
+<div class="modal fade" id="productImagesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content admin-modal">
+      <div class="modal-header admin-modal-header">
+        <h5 class="modal-title fw-bold text-dark">
+          <i class="bi bi-images me-2 text-info"></i>Gallery Images: <span id="galleryProductTitle"
+            class="text-primary"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <!-- Add New Image Section -->
+        <div class="card p-3 mb-4 bg-light border-0">
+          <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-cloud-upload me-1 text-info"></i>Add New Image to Gallery
+          </h6>
+          <form id="addImageForm" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-2 align-items-center">
+              <div class="col-12 col-md-5">
+                <input type="file" class="form-control form-control-sm" name="image_file" accept="image/*">
+              </div>
+              <div class="col-12 col-md-5">
+                <input type="url" class="form-control form-control-sm" name="name" placeholder="Or enter Image URL">
+              </div>
+              <div class="col-12 col-md-2">
+                <button type="submit" class="btn btn-sm btn-primary w-100">Upload</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Images Container -->
+        <h6 class="fw-bold mb-3 text-dark">Current Product Images (ProductImage Table)</h6>
+        <div class="row g-3" id="galleryImagesContainer">
+          <div class="col-12 text-center py-4 text-muted">
+            <div class="spinner-border spinner-border-sm text-info me-2" role="status"></div>
+            Loading gallery images...
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer admin-modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
     </div>
   </div>
 </div>
@@ -218,16 +344,83 @@
     document.getElementById('visibleProductCount').innerText = visibleCount;
   }
 
-  function openEditModal(id, title, price, category, image, description) {
+  function openEditModal(target, name, cost, price, stock, categoryId, thumbnail, description) {
+    let id = target;
+    if (target instanceof HTMLElement || (target && target.dataset)) {
+      const d = target.dataset;
+      id = d.id;
+      name = d.name;
+      cost = d.cost;
+      price = d.price;
+      stock = d.stock;
+      categoryId = d.categoryId;
+      thumbnail = d.thumbnail;
+      description = d.description;
+    }
+
     document.getElementById('editProductForm').action = `/admin/product/edit/${id}`;
-    document.getElementById('editTitle').value = title;
-    document.getElementById('editPrice').value = price;
-    document.getElementById('editCategory').value = category;
-    document.getElementById('editImage').value = image;
-    document.getElementById('editDescription').value = description;
+    document.getElementById('editName').value = name || '';
+    document.getElementById('editCost').value = cost || 0;
+    document.getElementById('editPrice').value = price || 0;
+    document.getElementById('editStock').value = stock || 0;
+    document.getElementById('editCategoryId').value = categoryId || 1;
+    document.getElementById('editThumbnail').value = thumbnail || '';
+    document.getElementById('editDescription').value = description || '';
 
     const editModal = new bootstrap.Modal(document.getElementById('editProductModal'));
     editModal.show();
+  }
+
+  function openImagesModal(target, title) {
+    let productId = target;
+    let productTitle = title;
+    if (target instanceof HTMLElement || (target && target.dataset)) {
+      productId = target.dataset.id;
+      productTitle = target.dataset.title;
+    }
+
+    document.getElementById('galleryProductTitle').innerText = productTitle || '';
+    document.getElementById('addImageForm').action = `/admin/product/${productId}/image/add`;
+    const container = document.getElementById('galleryImagesContainer');
+    container.innerHTML = '<div class="col-12 text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-info me-2"></div>Loading gallery images...</div>';
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
+
+    fetch(`/api/products/${productId}/images`)
+      .then(res => res.json())
+      .then(images => {
+        if (!images || images.length === 0) {
+          container.innerHTML = '<div class="col-12 text-center py-4 text-muted">No additional images found for this product. Use the upload box above to add images.</div>';
+          return;
+        }
+
+        let html = '';
+        images.forEach(img => {
+          html += `
+            <div class="col-6 col-md-4 col-lg-3">
+              <div class="card h-100 shadow-sm border-0 position-relative group">
+                <img src="${img.name}" class="card-img-top object-fit-contain p-2" style="height: 120px;" onerror="this.src='https://via.placeholder.com/120?text=Image'">
+                <div class="card-body p-2 text-center border-top">
+                  <span class="badge bg-light text-secondary border small">#IMG-${img.id}</span>
+                  <form action="/admin/product/image/delete/${img.id}" method="POST" class="mt-2" onsubmit="return confirm('Delete this image?');">
+                    <input type="hidden" name="csrf_token" value="${csrfToken}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger w-100 py-0" style="font-size: 0.75rem;">
+                      <i class="bi bi-trash"></i> Delete
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      })
+      .catch(err => {
+        container.innerHTML = '<div class="col-12 text-center py-4 text-danger">Failed to load images from API.</div>';
+      });
+
+    const imagesModal = new bootstrap.Modal(document.getElementById('productImagesModal'));
+    imagesModal.show();
   }
 </script>
 {% endblock %}

@@ -167,27 +167,36 @@
                   </div>
                 </div>
 
-                <form>
+                <form action="{{ url_for('update_account') }}" method="POST" enctype="multipart/form-data">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <div class="row g-3">
                     <div class="col-md-6">
                       <label class="form-label fw-bold" for="profileName">Full name</label>
-                      <input class="form-control" id="profileName" type="text" value="{{ user.name if user else session.get('user_name', 'Alex Morgan') }}" readonly>
+                      <input class="form-control" id="profileName" name="name" type="text" value="{{ user.name if user else session.get('user_name', 'Alex Morgan') }}" required>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label fw-bold" for="profileEmail">Email</label>
-                      <input class="form-control" id="profileEmail" type="email" value="{{ user.email if user else session.get('user_email', 'alex@example.com') }}" readonly>
+                      <input class="form-control bg-light" id="profileEmail" type="email" value="{{ user.email if user else session.get('user_email', 'alex@example.com') }}" readonly>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-bold" for="profileImage">Upload Profile Picture</label>
+                      <input class="form-control" id="profileImage" name="image_file" type="file" accept="image/*">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-bold" for="profilePassword">Change Password (optional)</label>
+                      <input class="form-control" id="profilePassword" name="password" type="password" placeholder="Leave blank to keep current password">
                     </div>
                     <div class="col-md-6">
                       <label class="form-label fw-bold" for="profilePhone">Member Since</label>
-                      <input class="form-control" id="profilePhone" type="text" value="{{ user.created_at if user else '2026-01-01' }}" readonly>
+                      <input class="form-control bg-light" id="profilePhone" type="text" value="{{ user.created_at if user else '2026-01-01' }}" readonly>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label fw-bold" for="profileStatus">Account Role</label>
-                      <input class="form-control" id="profileStatus" type="text" value="{{ user.role if user else session.get('user_role', 'User') }}" readonly>
+                      <input class="form-control bg-light" id="profileStatus" type="text" value="{{ user.role if user else session.get('user_role', 'User') }}" readonly>
                     </div>
                   </div>
-                  <button type="button" id="saveProfile" class="btn btn-teal mt-4">
-                    Save Profile
+                  <button type="submit" class="btn btn-teal mt-4">
+                    Save Profile Changes
                   </button>
                 </form>
               </div>

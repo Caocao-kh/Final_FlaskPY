@@ -51,9 +51,37 @@
             </div>
 
             {% if cart_items %}
+            <!-- Select All & Selection Status Toolbar -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center bg-light rounded-3 px-3 py-2.5 mb-4 border">
+              <div class="form-check d-flex align-items-center mb-0">
+                <input class="form-check-input me-2" type="checkbox" id="selectAllCheckbox" checked
+                  style="width: 1.25rem; height: 1.25rem; cursor: pointer; accent-color: #0d9488;">
+                <label class="form-check-label fw-bold text-dark user-select-none" for="selectAllCheckbox" style="cursor: pointer;">
+                  Select All (<span id="cartTotalItemsCount">{{ cart_items|length }}</span>)
+                </label>
+              </div>
+              <div class="small">
+                <span class="badge bg-white text-dark border px-3 py-1.5 fw-medium">
+                  <span id="selectedCountText" class="fw-bold text-teal">{{ cart_items|length }}</span> of {{ cart_items|length }} item(s) selected
+                </span>
+              </div>
+            </div>
+
             {% for item in cart_items %}
             <article
-              class="cart-item-card d-flex align-items-center gap-3 border-bottom pb-4 mb-4 {% if loop.last %}border-0 pb-0 mb-0{% endif %}">
+              class="cart-item-card d-flex align-items-center gap-3 border-bottom pb-4 mb-4 {% if loop.last %}border-0 pb-0 mb-0{% endif %}"
+              data-id="{{ item.id }}"
+              data-price="{{ item.price }}"
+              data-qty="{{ item.quantity }}">
+              
+              <!-- Checkbox for each individual product -->
+              <div class="form-check d-flex align-items-center m-0 me-1" style="flex-shrink: 0;">
+                <input class="form-check-input item-checkbox" type="checkbox" name="selected_items" value="{{ item.id }}"
+                  id="checkItem{{ item.id }}" form="cartCheckoutForm" checked
+                  style="width: 1.25rem; height: 1.25rem; cursor: pointer; accent-color: #0d9488;"
+                  aria-label="Select {{ item.title }}">
+              </div>
+
               <div class="p-2 bg-light rounded d-flex align-items-center justify-content-center"
                 style="width: 100px; height: 100px; flex-shrink: 0;">
                 <img src="{{ item.image }}" alt="{{ item.title }}" class="img-fluid"
@@ -66,6 +94,7 @@
                 <p class="text-muted small text-truncate-2 mb-2" style="max-width: 400px;">{{ item.description }}</p>
 
                 <form action="/update-quantity-nojs/{{ item.id }}" method="POST" class="d-inline-block">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <div class="static-qty border rounded d-inline-flex align-items-center bg-light">
                     <button class="btn btn-sm btn-link text-decoration-none px-2 py-0 text-secondary" type="submit"
                       name="direction" value="down" {% if item.quantity <=1 %}disabled{% endif %}>-</button>
@@ -83,7 +112,7 @@
               </div>
               <div class="cart-item-price text-end ms-auto" style="flex-shrink: 0;">
                 <span class="text-muted d-block small mb-1">Item total</span>
-                <strong class="h6 fw-bold text-dark">${{ "%.2f"|format(item.price * item.quantity) }}</strong>
+                <strong class="h6 fw-bold text-dark item-total-price">${{ "%.2f"|format(item.price * item.quantity) }}</strong>
               </div>
             </article>
             {% endfor %}
@@ -123,8 +152,12 @@
             <h2 class="h4 fw-bold mb-4">Order total</h2>
 
             <div class="summary-line d-flex justify-content-between mb-2 small text-muted">
+              <span>Selected items</span>
+              <strong class="text-dark" id="summarySelectedCount">{{ cart_items|length }} item(s)</strong>
+            </div>
+            <div class="summary-line d-flex justify-content-between mb-2 small text-muted">
               <span>Subtotal</span>
-              <strong class="text-dark">${{ "%.2f"|format(subtotal) }}</strong>
+              <strong class="text-dark" id="summarySubtotal">${{ "%.2f"|format(subtotal) }}</strong>
             </div>
             <div class="summary-line d-flex justify-content-between mb-2 small text-muted">
               <span>Discount</span>
@@ -143,15 +176,17 @@
 
             <div class="summary-line total d-flex justify-content-between align-items-center my-3">
               <span class="fw-bold text-dark h6 mb-0">Total</span>
-              <strong class="h4 fw-bold text-teal mb-0">${{ "%.2f"|format(total) }}</strong>
+              <strong class="h4 fw-bold text-teal mb-0" id="summaryTotal">${{ "%.2f"|format(total) }}</strong>
             </div>
 
-            <button type="button"
-              class="btn btn-teal btn-lg w-100 mt-3 py-2.5 fw-bold {% if not cart_items %}disabled{% endif %}"
-              {% if not cart_items %}disabled{% endif %}
-              data-bs-toggle="modal" data-bs-target="#checkoutModal">
-              Proceed to checkout
-            </button>
+            <form id="cartCheckoutForm" action="{{ url_for('checkout') }}" method="POST">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" id="checkoutBtn"
+                class="btn btn-teal btn-lg w-100 mt-3 py-2.5 fw-bold {% if not cart_items %}disabled{% endif %}"
+                {% if not cart_items %}disabled{% endif %}>
+                Proceed to checkout
+              </button>
+            </form>
             <a class="btn btn-outline-secondary w-100 mt-2 py-2 small" href="/products">Add more products</a>
 
             <div class="secure-note mt-4 border-top pt-3 small text-muted">
@@ -177,6 +212,7 @@
           <button type="button" class="btn-close me-2 mt-2" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <form action="{{ url_for('telegram_order') }}" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="modal-body py-3">
             <p class="text-muted small mb-3">Please fill in your delivery details to complete your order and send it to Telegram.</p>
             
@@ -263,15 +299,154 @@
   </style>
 
   <script>
-    // Auto-show success modal if redirected with ?order_success=1
     document.addEventListener('DOMContentLoaded', function () {
+      const selectAll = document.getElementById('selectAllCheckbox');
+      const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+      const selectedCountText = document.getElementById('selectedCountText');
+      const summarySelectedCount = document.getElementById('summarySelectedCount');
+      const summarySubtotal = document.getElementById('summarySubtotal');
+      const summaryTotal = document.getElementById('summaryTotal');
+      const checkoutBtn = document.getElementById('checkoutBtn');
+      const cartCheckoutForm = document.getElementById('cartCheckoutForm');
+
+      // Check if order was successful - clear persisted selection so fresh cart items start selected
       const params = new URLSearchParams(window.location.search);
       if (params.get('order_success') === '1') {
+        try {
+          sessionStorage.removeItem('cart_selected_ids');
+        } catch (e) {}
+
         var modal = new bootstrap.Modal(document.getElementById('thankYouModal'));
         modal.show();
-        // Clean up the URL so refreshing doesn't re-show the modal
         history.replaceState(null, '', window.location.pathname);
       }
+
+      function updateCartSummary() {
+        const totalItems = itemCheckboxes.length;
+        let selectedCount = 0;
+        let subtotal = 0.0;
+        const selectedIds = [];
+
+        itemCheckboxes.forEach(cb => {
+          if (cb.checked) {
+            selectedCount++;
+            selectedIds.push(cb.value);
+            const itemCard = cb.closest('.cart-item-card');
+            if (itemCard) {
+              const price = parseFloat(itemCard.dataset.price || 0);
+              const qty = parseInt(itemCard.dataset.qty || 1, 10);
+              subtotal += price * qty;
+            }
+          }
+        });
+
+        // 1. Sync Select All checkbox
+        if (selectAll) {
+          selectAll.checked = totalItems > 0 && selectedCount === totalItems;
+          selectAll.indeterminate = selectedCount > 0 && selectedCount < totalItems;
+        }
+
+        // 2. Display the number of selected products
+        if (selectedCountText) {
+          selectedCountText.textContent = selectedCount;
+        }
+        if (summarySelectedCount) {
+          summarySelectedCount.textContent = selectedCount + (selectedCount === 1 ? ' item' : ' items');
+        }
+
+        // 3. Update Order Summary subtotal & total based ONLY on selected products
+        const formattedSubtotal = '$' + subtotal.toFixed(2);
+        if (summarySubtotal) {
+          summarySubtotal.textContent = formattedSubtotal;
+        }
+        if (summaryTotal) {
+          summaryTotal.textContent = formattedSubtotal;
+        }
+
+        // 4. Disable Checkout button if no products are selected
+        if (checkoutBtn) {
+          if (selectedCount === 0 || totalItems === 0) {
+            checkoutBtn.disabled = true;
+            checkoutBtn.classList.add('disabled');
+            checkoutBtn.setAttribute('title', 'Please select at least one product to checkout');
+          } else {
+            checkoutBtn.disabled = false;
+            checkoutBtn.classList.remove('disabled');
+            checkoutBtn.removeAttribute('title');
+          }
+        }
+
+        // 5. Persist selection in sessionStorage to preserve across quantity +/- reloads
+        try {
+          sessionStorage.setItem('cart_selected_ids', JSON.stringify(selectedIds));
+        } catch (e) {}
+
+        // 6. Keep #checkoutModal in sync if present
+        const modalForm = document.querySelector('#checkoutModal form');
+        if (modalForm) {
+          modalForm.querySelectorAll('input[name="selected_items"]').forEach(el => el.remove());
+          selectedIds.forEach(id => {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'selected_items';
+            hidden.value = id;
+            modalForm.appendChild(hidden);
+          });
+        }
+      }
+
+      // Restore previously selected items from sessionStorage (if available)
+      try {
+        const stored = sessionStorage.getItem('cart_selected_ids');
+        if (stored) {
+          const savedIds = JSON.parse(stored);
+          if (Array.isArray(savedIds)) {
+            itemCheckboxes.forEach(cb => {
+              cb.checked = savedIds.includes(cb.value);
+            });
+          }
+        }
+      } catch (e) {}
+
+      // Checkbox event listeners
+      itemCheckboxes.forEach(cb => {
+        cb.addEventListener('change', updateCartSummary);
+      });
+
+      if (selectAll) {
+        selectAll.addEventListener('change', function () {
+          const isChecked = this.checked;
+          itemCheckboxes.forEach(cb => {
+            cb.checked = isChecked;
+          });
+          updateCartSummary();
+        });
+      }
+
+      // Intercept cartCheckoutForm submit to ensure only selected products are sent
+      if (cartCheckoutForm) {
+        cartCheckoutForm.addEventListener('submit', function (e) {
+          const selectedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+          if (selectedCheckboxes.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one product from your cart to proceed to checkout.');
+            return false;
+          }
+
+          // Ensure selected IDs are cleanly attached to the form
+          cartCheckoutForm.querySelectorAll('input[name="selected_items"]').forEach(el => el.remove());
+          selectedCheckboxes.forEach(cb => {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'selected_items';
+            hidden.value = cb.value;
+            cartCheckoutForm.appendChild(hidden);
+          });
+        });
+      }
+
+      // Initial calculation on page load
+      updateCartSummary();
     });
   </script>
 
